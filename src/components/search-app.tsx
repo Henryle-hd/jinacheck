@@ -1,0 +1,355 @@
+"use client";
+
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+
+import type { ObjectType, ScoredEntity, SearchResponse } from "@/lib/types";
+import {
+  DEFAULT_STATE,
+  readAppState,
+  writeAppState,
+  type Depth,
+  type Sort,
+} from "@/lib/url-state";
+import { applyFilters, EMPTY_FILTERS, FilterBar, type FilterState } from "./filters";
+import { ResultRow } from "./result-row";
+import { VerdictLine } from "./verdict";
+
+export function SearchApp() {
+  const [name, setName] = useState(DEFAULT_STATE.name);
+  const [objectType, setObjectType] = useState<ObjectType>(DEFAULT_STATE.objectType);
+  const [depth, setDepth] = useState<Depth>(DEFAULT_STATE.depth);
+
+  const [data, setData] = useState<SearchResponse | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [elapsed, setElapsed] = useState(0);
+
+  const [filters, setFilters] = useState<FilterState>(EMPTY_FILTERS);
+  const [sort, setSort] = useState<Sort>(DEFAULT_STATE.sort);
+  const [limit, setLimit] = useState(25);
+
+  const abortRef = useRef<AbortController | null>(null);
+  const restoredRef = useRef(false);
+  const hasResults = Boolean(data) || loading || Boolean(error);
+
+  useEffect(() => {
+    if (!loading) return;
+    const started = Date.now();
+    const id = setInterval(() => setElapsed(Math.round((Date.now() - started) / 1000)), 500);
+    return () => clearInterval(id);
+  }, [loading]);
+
+  const run = useCallback(
+    /**
+     * `overrides` exists so the type and depth controls can re-run immediately on
+     * change. Calling run() straight after setObjectType would read the previous
+     * value out of the closure, and the user would see stale rule flags.
+     */
+    async (overrides?: {
+      name?: string;
+      objectType?: ObjectType;
+      depth?: Depth;
+      /** Set when restoring a shared link, whose filters must survive the run. */
+      keepFilters?: boolean;
+    }) => {
+      const payload = {
+        name: overrides?.name ?? name,
+        objectType: overrides?.objectType ?? objectType,
+        depth: overrides?.depth ?? depth,
+      };
+      if (!payload.name.trim()) return;
+
+      abortRef.current?.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
+
+      setElapsed(0);
+      setLoading(true);
+      setError(null);
+      if (!overrides?.keepFilters) setFilters(EMPTY_FILTERS);
+      setLimit(25);
+
+      try {
+        const res = await fetch("/api/search", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+          signal: controller.signal,
+        });
+        const body = await res.json();
+        if (!res.ok) {
+          setError(body.error ?? "The search failed. Try again.");
+          setData(null);
+        } else {
+          setData(body as SearchResponse);
+        }
+      } catch (err) {
+        if (err instanceof Error && err.name === "AbortError") return;
+        setError(err instanceof Error ? err.message : "Could not reach the search service.");
+        setData(null);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [name, objectType, depth],
+  );
+
+  /**
+   * Restore a shared link, once, on mount.
+   *
+   * This has to happen after hydration rather than during render: the page is
+   * prerendered without a query string, so seeding state from the URL while
+   * rendering would produce markup that doesn't match the server's.
+   */
+  useEffect(() => {
+    if (restoredRef.current) return;
+    restoredRef.current = true;
+
+    const s = readAppState(window.location.search);
+    if (!s.name.trim()) return;
+
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time restore of shared-link state; cannot run during render without a hydration mismatch
+    setName(s.name);
+    setObjectType(s.objectType);
+    setDepth(s.depth);
+    setSort(s.sort);
+    setFilters(s.filters);
+    void run({
+      name: s.name,
+      objectType: s.objectType,
+      depth: s.depth,
+      keepFilters: true,
+    });
+  }, [run]);
+
+  /**
+   * Keep the URL in step with every control, so the address bar is always a
+   * shareable, reopenable snapshot. `replaceState` rather than `push` — filter
+   * fiddling shouldn't fill up the back button.
+   */
+  useEffect(() => {
+    const query = writeAppState({ name, objectType, depth, sort, filters });
+    const next = `${window.location.pathname}${query}`;
+    if (next !== `${window.location.pathname}${window.location.search}`) {
+      window.history.replaceState(null, "", next);
+    }
+  }, [name, objectType, depth, sort, filters]);
+
+  const filtered = useMemo(() => {
+    if (!data) return [] as ScoredEntity[];
+    const pool = applyFilters(data.results, filters);
+    const sorted = [...pool];
+    switch (sort) {
+      case "name":
+        sorted.sort((a, b) => a.name.localeCompare(b.name));
+        break;
+      case "newest":
+        sorted.sort((a, b) => (b.year ?? 0) - (a.year ?? 0) || b.score - a.score);
+        break;
+      case "oldest":
+        sorted.sort((a, b) => (a.year ?? 9999) - (b.year ?? 9999) || b.score - a.score);
+        break;
+      default:
+        sorted.sort((a, b) => b.score - a.score || a.name.localeCompare(b.name));
+    }
+    return sorted;
+  }, [data, filters, sort]);
+
+  const searchField = (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        void run();
+      }}
+      className="w-full"
+    >
+      {/* Focus lifts the pill with a softer shadow instead of hardening its
+          border — the border darkening read as a heavy double outline. */}
+      <div className="flex items-center gap-2 rounded-full border border-line bg-surface py-2 pr-2 pl-4 shadow-(--shadow-sm) transition-shadow hover:shadow-(--shadow-md) focus-within:border-transparent focus-within:shadow-(--shadow-md)">
+        <svg viewBox="0 0 16 16" className="size-4 shrink-0 text-faint" aria-hidden>
+          <circle cx="6.5" cy="6.5" r="4.5" fill="none" stroke="currentColor" strokeWidth="1.6" />
+          <path d="M10 10l4 4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+        </svg>
+        <input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder={
+            objectType === "ET-COMPANY" ? "Company name" : "Business name"
+          }
+          autoComplete="off"
+          spellCheck={false}
+          aria-label="Name you want to register"
+          className="min-w-0 flex-1 bg-transparent text-[15px] text-ink outline-none placeholder:text-faint"
+        />
+        {name && (
+          <button
+            type="button"
+            onClick={() => setName("")}
+            aria-label="Clear"
+            className="shrink-0 px-1 text-faint hover:text-ink"
+          >
+            ×
+          </button>
+        )}
+        <button
+          type="submit"
+          disabled={loading || !name.trim()}
+          className="shrink-0 rounded-full bg-accent px-4 py-1.5 text-[13px] font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-40 dark:text-[#04231f]"
+        >
+          {loading ? "…" : "Check"}
+        </button>
+      </div>
+    </form>
+  );
+
+  // The toggle picks which naming rules apply — it does not scope the search.
+  // Both registers are always searched, since a name trading in either one is a
+  // real obstacle.
+  const typeToggle = (
+    <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[13px]">
+      <span className="text-faint">Registering a</span>
+      {(
+        [
+          { v: "ET-COMPANY" as ObjectType, label: "Company" },
+          { v: "ET-BUSINESS" as ObjectType, label: "Business name" },
+        ] as const
+      ).map((opt) => (
+        <button
+          key={opt.v}
+          type="button"
+          onClick={() => {
+            if (opt.v === objectType) return;
+            setObjectType(opt.v);
+            // Re-check straight away so the naming rules update. The register
+            // results are cached under the same key, so this is instant.
+            if (data || error) void run({ objectType: opt.v });
+          }}
+          className={
+            objectType === opt.v
+              ? "font-medium text-ink underline decoration-accent decoration-2 underline-offset-4"
+              : "text-muted hover:text-ink"
+          }
+        >
+          {opt.label}
+        </button>
+      ))}
+      <span className="text-faint">·</span>
+      <select
+        value={depth}
+        onChange={(e) => {
+          const next = e.target.value as Depth;
+          setDepth(next);
+          if (data || error) void run({ depth: next });
+        }}
+        aria-label="Search depth"
+        className="bg-transparent text-muted outline-none hover:text-ink"
+      >
+        <option value="quick">Quick</option>
+        <option value="standard">Standard</option>
+        <option value="deep">Deep</option>
+      </select>
+    </div>
+  );
+
+  // ── landing ────────────────────────────────────────────────────────────
+  if (!hasResults) {
+    return (
+      // Vertically centred in the available space, with a slight upward bias so
+      // the block sits on the optical centre rather than the mathematical one.
+      <div className="mx-auto flex w-full max-w-xl flex-1 flex-col items-center justify-center px-4 py-12 pb-24">
+        <h1 className="text-[34px] leading-none font-semibold tracking-tight text-ink">
+          Jina<span className="text-accent">Check</span>
+        </h1>
+        <p className="mt-2 text-center text-[14px] text-muted">
+          Is the name you want already taken at BRELA?
+        </p>
+
+        <div className="mt-7 w-full">{searchField}</div>
+        <div className="mt-4">{typeToggle}</div>
+      </div>
+    );
+  }
+
+  // ── results ────────────────────────────────────────────────────────────
+  return (
+    <div className="mx-auto w-full max-w-3xl px-4 pb-24">
+      <div className="sticky top-0 z-20 -mx-4 bg-canvas/92 px-4 pt-4 pb-3 backdrop-blur-md">
+        {searchField}
+        <div className="mt-2.5">{typeToggle}</div>
+      </div>
+
+      {loading && (
+        <div className="pt-8">
+          <p className="text-[13px] text-muted">
+            Searching the register…{" "}
+            <span className="tnum text-faint">{elapsed}s</span>
+          </p>
+          <p className="mt-1 text-[12px] text-faint">
+            BRELA can take 15 to 30 seconds on common words. Filtering afterwards is instant.
+          </p>
+          <ul className="mt-6 space-y-5">
+            {[0, 1, 2, 3, 4, 5].map((i) => (
+              <li key={i} className="space-y-1.5">
+                <div className="skeleton h-3.5 w-2/3 rounded" />
+                <div className="skeleton h-3 w-5/6 rounded" />
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {error && !loading && (
+        <div className="pt-8">
+          <p className="text-[14px] font-medium text-critical">Search could not complete</p>
+          <p className="mt-1 text-[13px] leading-relaxed text-muted">{error}</p>
+          <button
+            onClick={() => void run()}
+            className="mt-2 text-[13px] text-accent hover:underline"
+          >
+            Try again
+          </button>
+        </div>
+      )}
+
+      {data && !loading && (
+        <div className="pt-3">
+          <VerdictLine data={data} />
+
+          <div className="pt-3">
+            <FilterBar
+              data={data}
+              filters={filters}
+              onChange={setFilters}
+              visibleCount={filtered.length}
+              sort={sort}
+              onSortChange={setSort}
+            />
+          </div>
+
+          {filtered.length === 0 ? (
+            <p className="pt-8 text-[13px] text-muted">
+              {data.results.length === 0
+                ? "No entry on the register resembles this name."
+                : "Nothing matches these filters."}
+            </p>
+          ) : (
+            <ul className="mt-1 divide-y divide-line">
+              {filtered.slice(0, limit).map((r) => (
+                <ResultRow key={r.uid} entity={r} terms={data.query.tokens} />
+              ))}
+            </ul>
+          )}
+
+          {filtered.length > limit && (
+            <button
+              onClick={() => setLimit((l) => l + 50)}
+              className="mt-5 text-[13px] text-accent hover:underline"
+            >
+              Show more results
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}

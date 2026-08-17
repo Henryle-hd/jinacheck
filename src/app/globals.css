@@ -1,26 +1,265 @@
 @import "tailwindcss";
 
+/*
+ * Design tokens.
+ *
+ * The look is deliberately closer to a legal/registry instrument than a consumer
+ * app: warm paper ground, one accent, semantic risk colours doing the loud work,
+ * and monospace reserved for identifiers so numbers stay scannable.
+ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --canvas: #fbfaf8;
+  --surface: #ffffff;
+  --raised: #f5f4f1;
+  --border: #e5e2dc;
+  --border-strong: #d3cfc7;
+  --ink: #191917;
+  --ink-soft: #4b4a46;
+  --muted: #6f6e69;
+  --faint: #9a9994;
+  --accent: #0a6b5d;
+  --accent-soft: #e6f2f0;
+  --accent-ink: #064e43;
+
+  --critical: #b42318;
+  --critical-bg: #fef3f2;
+  --high: #b54708;
+  --high-bg: #fff6ed;
+  --medium: #93700a;
+  --medium-bg: #fffaeb;
+  --low: #175cd3;
+  --low-bg: #eff8ff;
+  --clear: #067647;
+  --clear-bg: #ecfdf3;
+
+  --shadow-sm: 0 1px 2px rgba(24, 24, 20, 0.05);
+  --shadow-md: 0 2px 8px -2px rgba(24, 24, 20, 0.09), 0 1px 3px rgba(24, 24, 20, 0.05);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+/*
+ * Tailwind's `dark:` variant normally follows prefers-color-scheme, which a
+ * manual toggle can't override. Point it at the data-theme attribute instead;
+ * an inline script in <head> resolves the system preference to a concrete
+ * light/dark value before first paint, so the attribute is always set.
+ */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
+/*
+ * System preference, used only until the reader picks a side. The dark palette
+ * is repeated below for the explicit `[data-theme="dark"]` case: a media query
+ * and an attribute selector can't share one declaration block, and the
+ * duplication is preferable to losing the no-JS fallback.
+ */
 @media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  :root:not([data-theme]) {
+    --canvas: #0c0e0e;
+    --surface: #141717;
+    --raised: #1b1f1f;
+    --border: #272c2c;
+    --border-strong: #384040;
+    --ink: #ecedec;
+    --ink-soft: #c3c7c5;
+    --muted: #949a98;
+    --faint: #6c7371;
+    --accent: #2dd4bf;
+    --accent-soft: #10302c;
+    --accent-ink: #7ee8da;
+
+    --critical: #fda29b;
+    --critical-bg: #2c1614;
+    --high: #fdb022;
+    --high-bg: #2b1c0c;
+    --medium: #fde272;
+    --medium-bg: #2a2110;
+    --low: #84caff;
+    --low-bg: #10243c;
+    --clear: #6ce9a6;
+    --clear-bg: #0c2921;
+
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-md: 0 2px 10px -2px rgba(0, 0, 0, 0.5), 0 1px 3px rgba(0, 0, 0, 0.4);
   }
 }
 
+/* Explicit choice from the toggle. Same palette as the system-dark block above. */
+:root[data-theme="dark"] {
+  --canvas: #0c0e0e;
+  --surface: #141717;
+  --raised: #1b1f1f;
+  --border: #272c2c;
+  --border-strong: #384040;
+  --ink: #ecedec;
+  --ink-soft: #c3c7c5;
+  --muted: #949a98;
+  --faint: #6c7371;
+  --accent: #2dd4bf;
+  --accent-soft: #10302c;
+  --accent-ink: #7ee8da;
+
+  --critical: #fda29b;
+  --critical-bg: #2c1614;
+  --high: #fdb022;
+  --high-bg: #2b1c0c;
+  --medium: #fde272;
+  --medium-bg: #2a2110;
+  --low: #84caff;
+  --low-bg: #10243c;
+  --clear: #6ce9a6;
+  --clear-bg: #0c2921;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 2px 10px -2px rgba(0, 0, 0, 0.5), 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+@theme inline {
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-raised: var(--raised);
+  --color-line: var(--border);
+  --color-line-strong: var(--border-strong);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-ink: var(--accent-ink);
+
+  --color-critical: var(--critical);
+  --color-critical-bg: var(--critical-bg);
+  --color-high: var(--high);
+  --color-high-bg: var(--high-bg);
+  --color-medium: var(--medium);
+  --color-medium-bg: var(--medium-bg);
+  --color-low: var(--low);
+  --color-low-bg: var(--low-bg);
+  --color-clear: var(--clear);
+  --color-clear-bg: var(--clear-bg);
+
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+}
+
+/*
+ * Default border colour, in @layer base on purpose.
+ *
+ * Unlayered declarations outrank every layered one no matter the specificity, so
+ * an unlayered `*` rule here would quietly beat all of Tailwind's border-colour
+ * utilities — including focus states like `focus:border-accent`. Keeping it in
+ * the base layer lets utilities override it as intended.
+ */
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-feature-settings: "cv11", "ss01";
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+}
+
+/* Focus ring: visible, but only for keyboard users. */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/*
+ * Text fields opt out of the generic ring. They live inside rounded containers
+ * that carry their own focus treatment (border + shadow), and a rectangular
+ * outline drawn inside a pill reads as a stray box rather than a focus state.
+ * Every text field in the app changes its own border on focus, so the state
+ * stays visible without the ring.
+ */
+input:focus-visible,
+textarea:focus-visible {
+  outline: none;
+}
+
+/* Tabular figures wherever we show scores, dates or identifiers. */
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Thin, unobtrusive scrollbars in the filter rail and long lists. */
+.scroll-slim {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+.scroll-slim::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.scroll-slim::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 4px;
+}
+.scroll-slim::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Hairline that survives fractional device pixel ratios. */
+.hairline {
+  box-shadow: inset 0 -1px 0 var(--border);
+}
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--raised);
+}
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--border) 55%, transparent),
+    transparent
+  );
+  animation: shimmer 1.6s infinite;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.rise {
+  animation: rise 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rise,
+  .skeleton::after {
+    animation: none;
+  }
 }
