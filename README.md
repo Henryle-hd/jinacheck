@@ -3,8 +3,8 @@
 Smart name-clearance search over Tanzania's BRELA public business register.
 
 BRELA's official public search works, but it is a plain substring match with no
-ranking. Type the name you actually want to register — `NIKA GROUP LIMITED` — and
-it returns nothing, because no entry contains that exact run of characters. Type
+ranking. Type the name you actually want to register, say `NIKA GROUP LIMITED`,
+and it returns nothing, because no entry contains that exact run of characters. Type
 `nika` and it returns 33 entries in registration order, with a company literally
 called `NIKA COMPANY LIMITED` sitting somewhere in the middle.
 
@@ -19,18 +19,18 @@ worth searching, so that is what gets sent upstream.
 
 **Searches both registers at once.** BRELA keeps companies and business names in
 separate silos and its public search makes you pick one, so a live business name
-like `QUICKLEE DIGITAL EXPERIENCES` is invisible to anyone checking as a company —
-it returns zero results. Both registers are always searched, and each hit is
+like `QUICKLEE DIGITAL EXPERIENCES` is invisible to anyone checking as a company.
+It returns zero results. Both registers are always searched, and each hit is
 labelled with the register it came from. The Company / Business name toggle only
 decides which naming rules apply to *your* name.
 
 **Catches names that only sound the same.** The upstream search is substring-only,
-so `NYIKA` can never surface `NIKA COMPANY LIMITED` — yet those two collide
+so `NYIKA` can never surface `NIKA COMPANY LIMITED`, yet those two collide
 squarely under the "calculated to deceive" test. Homophone spellings are probed
 alongside the literal tokens (`NYIKA` → `NIKA`, `NYICA`, …), and matches are
 scored with a phonetic key tuned for Swahili orthography.
 
-**Scores conflict risk 0–100.** Identical cores rank above homophones, which rank
+**Scores conflict risk from 0 to 100.** Identical cores rank above homophones, which rank
 above shared openings, which rank above loose substring noise. `TANGANYIKA
 ESTATE AGENTS` contains "nyika" but scores 30, not 90.
 
@@ -52,7 +52,7 @@ npm run dev
 
 Then open http://localhost:3000.
 
-No API keys and no database — the register is queried live.
+No API keys and no database. The register is queried live.
 
 ## Layout
 
@@ -71,22 +71,37 @@ src/
   components/             search UI, filter bar, result rows
 ```
 
+## Checking a result yourself
+
+Every result comes from BRELA's own public register, which you can search
+directly at [ors.brela.go.tz/orsreg/searchbusinesspublic][brela]. Pick the
+Company or Business name tab there to look up an entry and compare.
+
+Worth knowing before trusting a clear result: that search only covers records
+held in the Online Registration System, or ones that have since been migrated
+into it through a data update or annual return filing. Anything still only on
+paper will not appear, in this app or on BRELA's own page. BRELA directs you to
+its "Request for a custom search result" e-service, or to a BRELA office, for
+the rest.
+
+[brela]: https://ors.brela.go.tz/orsreg/searchbusinesspublic
+
 ## Upstream behaviour worth knowing
 
-All confirmed against the live endpoint
-(`POST https://ors.brela.go.tz/orsreg/list/search/businesspublic.json`):
+Observed against the live register, and the reason the client is built the way
+it is:
 
-- The response is columnar: `Map` holds column names, `Records` holds arrays.
-  Fields are mapped by name so an upstream column re-order can't shift data.
-- Latency scales with how many rows match, not page size. A narrow distinctive
-  term returns in well under a second; `group` (5,794 matches) takes ~15–30s.
-  This is the main reason searching the distinctive core is both more accurate
-  *and* much faster.
-- Paging is stable and non-overlapping, so pages are fetched in parallel with a
+- Responses are columnar: one list of column names, then rows as plain arrays.
+  Fields are mapped by name, so a column re-order upstream can't shift data.
+- Latency scales with how many rows match, not with page size. A narrow
+  distinctive term returns in well under a second, while `group` (5,794 matches)
+  takes 15 to 30 seconds. This is the main reason searching the distinctive core
+  is both more accurate *and* much faster.
+- Paging is stable and non-overlapping, so pages are fetched in parallel under a
   bounded request budget.
-- Terms under 3 characters make the upstream SQL time out and return
-  `{"error": "Execution Timeout Expired..."}` with **HTTP 200** — errors have to
-  be detected in the body, not the status code.
+- Terms under 3 characters make the upstream query time out, and the failure
+  comes back with **HTTP 200** and an error in the body. Errors have to be
+  detected by reading the body, not the status code.
 - Results are cached in-process for 30 minutes, so filtering and sorting after a
   search never re-pay upstream latency.
 
@@ -94,6 +109,6 @@ All confirmed against the live endpoint
 
 Risk scores and rule flags are decision-support heuristics modelled on the tests
 in the Companies Act (Cap. 212) and the Business Names (Registration) Act
-(Cap. 213). They are not a legal determination and not a name reservation — the
+(Cap. 213). They are not a legal determination, and they do not reserve a name. The
 Registrar has discretion and the final say. Entries may also be absent from the
 public search.

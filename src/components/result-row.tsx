@@ -3,7 +3,7 @@
 import { useState } from "react";
 
 import type { ScoredEntity } from "@/lib/types";
-import { Dot, KIND_LABEL, REGISTER_LABEL } from "./ui";
+import { CopyButton, Dot, KIND_LABEL, REGISTER_LABEL } from "./ui";
 
 function formatDate(value: string | null): string | null {
   if (!value) return null;
@@ -56,7 +56,7 @@ export function ResultRow({ entity, terms }: { entity: ScoredEntity; terms: stri
   ].filter(Boolean);
 
   return (
-    <li className="py-3.5">
+    <li className="group py-3.5">
       <div className="flex items-start gap-2.5">
         {/* aligned to the cap height of the name, not the row box */}
         <span className="mt-[7px]">
@@ -112,6 +112,12 @@ export function ResultRow({ entity, terms }: { entity: ScoredEntity; terms: stri
             </dl>
           )}
         </div>
+
+        {/* Sibling of the row toggle, not a child: a button cannot nest inside
+            another button. */}
+        <span className="mt-0.5 shrink-0">
+          <CopyButton value={entity.name} label="Copy name" />
+        </span>
       </div>
     </li>
   );

@@ -29,6 +29,110 @@ export const KIND_LABEL: Record<MatchKind, string> = {
   weak: "Loose",
 };
 
+/**
+ * Copy to clipboard, with a fallback.
+ *
+ * `navigator.clipboard` only exists in a secure context, so a deployment served
+ * over plain http would silently have a dead button. The textarea route is the
+ * old execCommand trick, kept for exactly that case.
+ */
+async function copyText(text: string): Promise<boolean> {
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch {
+    // fall through to the legacy path
+  }
+
+  try {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.setAttribute("readonly", "");
+    ta.style.position = "fixed";
+    ta.style.top = "-1000px";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.select();
+    const ok = document.execCommand("copy");
+    document.body.removeChild(ta);
+    return ok;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Icon button that copies `value` and briefly confirms.
+ *
+ * Hidden until the row is hovered on pointer devices, but always visible on
+ * small screens, where there is no hover to reveal it.
+ */
+export function CopyButton({
+  value,
+  label = "Copy",
+}: {
+  value: string;
+  label?: string;
+}) {
+  const [state, setState] = useState<"idle" | "done" | "failed">("idle");
+
+  useEffect(() => {
+    if (state === "idle") return;
+    const id = setTimeout(() => setState("idle"), 1600);
+    return () => clearTimeout(id);
+  }, [state]);
+
+  return (
+    <button
+      type="button"
+      onClick={async (e) => {
+        e.stopPropagation();
+        setState((await copyText(value)) ? "done" : "failed");
+      }}
+      title={state === "done" ? "Copied" : state === "failed" ? "Could not copy" : label}
+      aria-label={label}
+      className={`shrink-0 rounded p-1 transition-opacity hover:bg-raised focus-visible:opacity-100 sm:opacity-0 sm:group-hover:opacity-100 ${
+        state === "done" ? "text-clear sm:opacity-100" : "text-faint hover:text-ink"
+      }`}
+    >
+      {state === "done" ? (
+        <svg viewBox="0 0 16 16" className="size-3.5" aria-hidden>
+          <path
+            d="M3.5 8.5l3 3 6-7"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      ) : (
+        <svg viewBox="0 0 16 16" className="size-3.5" aria-hidden>
+          <rect
+            x="5.5"
+            y="5.5"
+            width="8"
+            height="8"
+            rx="1.5"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.3"
+          />
+          <path
+            d="M10.5 3.5v-1a1 1 0 0 0-1-1h-6a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h1"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.3"
+            strokeLinecap="round"
+          />
+        </svg>
+      )}
+    </button>
+  );
+}
+
 /** Small status dot. Carries the risk colour without shouting. */
 export function Dot({ band }: { band: RiskBand }) {
   return (
