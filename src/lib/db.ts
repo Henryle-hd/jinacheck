@@ -104,6 +104,8 @@ async function ensureSchema(): Promise<void> {
     // fact about who searched what and in which order, not about the register,
     // and nothing reads it.
     await sql`ALTER TABLE searches ADD COLUMN IF NOT EXISTS new_entities int`;
+    // Whether the search came from the site or from the public API.
+    await sql`ALTER TABLE searches ADD COLUMN IF NOT EXISTS search_kind text DEFAULT 'user'`;
   })();
 
   return globalDb.__jinacheckSchema;
@@ -257,6 +259,7 @@ export interface SearchLog {
   fromCache: boolean;
   truncated: boolean;
   lang: string | null;
+  kind: "user" | "api";
   meta: RequestMeta;
 }
 
@@ -271,13 +274,13 @@ export async function recordSearch(log: SearchLog): Promise<number | null> {
     INSERT INTO searches (
       query_name, query_core, terms, scope, depth, result_count, top_score,
       verdict_band, flag_ids, duration_ms, from_cache, truncated, lang,
-      country, region, device_type, os, browser, visitor_hash
+      country, region, device_type, os, browser, visitor_hash, search_kind
     ) VALUES (
       ${log.queryName}, ${log.queryCore}, ${log.terms}, ${log.scope}, ${log.depth},
       ${log.resultCount}, ${log.topScore}, ${log.verdictBand}, ${log.flagIds},
       ${log.durationMs}, ${log.fromCache}, ${log.truncated}, ${log.lang},
       ${log.meta.country}, ${log.meta.region}, ${log.meta.deviceType},
-      ${log.meta.os}, ${log.meta.browser}, ${log.meta.visitorHash}
+      ${log.meta.os}, ${log.meta.browser}, ${log.meta.visitorHash}, ${log.kind}
     )
     RETURNING id
     `) as Array<{ id: number }>;
