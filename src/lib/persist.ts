@@ -12,14 +12,14 @@ import type { SearchResponse } from "./types";
  * from the site and traffic from the public API.
  */
 export function persistSearch(
-  request: Request,
+  headers: Headers,
   response: SearchResponse,
   kind: "user" | "api",
 ): void {
   if (!dbEnabled()) return;
 
-  const meta = readRequestMeta(request);
-  const lang = request.headers.get("accept-language")?.slice(0, 12) ?? null;
+  const meta = readRequestMeta(headers);
+  const lang = headers.get("accept-language")?.slice(0, 12) ?? null;
 
   after(async () => {
     try {
