@@ -41,15 +41,24 @@ export async function GET(request: Request) {
         style={{
           display: "flex",
           flexDirection: "column",
-          justifyContent: "space-between",
+          alignItems: "center",
           width: "100%",
           height: "100%",
           background: ACCENT,
-          padding: "76px 80px",
+          padding: "64px 72px",
           fontFamily: "sans-serif",
         }}
       >
-        <div style={{ display: "flex", flexDirection: "column" }}>
+        {/* the name sits in the optical centre of the card */}
+        <div
+          style={{
+            display: "flex",
+            flex: 1,
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
           <div
             style={{
               display: "flex",
@@ -64,7 +73,9 @@ export async function GET(request: Request) {
           <div
             style={{
               display: "flex",
-              marginTop: 22,
+              marginTop: 20,
+              maxWidth: 1000,
+              textAlign: "center",
               fontSize: fontSizeFor(name),
               lineHeight: 1.02,
               fontWeight: 700,
@@ -74,21 +85,29 @@ export async function GET(request: Request) {
           >
             {name}
           </div>
+          {count ? (
+            <div
+              style={{
+                display: "flex",
+                marginTop: 26,
+                fontSize: 28,
+                color: "rgba(255,255,255,0.78)",
+              }}
+            >
+              {count} similar on the register
+            </div>
+          ) : null}
         </div>
 
         <div
           style={{
             display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            fontSize: 27,
-            color: "rgba(255,255,255,0.82)",
+            fontSize: 26,
+            letterSpacing: 1,
+            color: "rgba(255,255,255,0.7)",
           }}
         >
-          <div style={{ display: "flex" }}>JinaCheck</div>
-          <div style={{ display: "flex" }}>
-            {count ? `${count} similar on the BRELA register` : "BRELA name check"}
-          </div>
+          JinaCheck | BRELA
         </div>
       </div>
     ),
