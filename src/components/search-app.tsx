@@ -31,6 +31,7 @@ export function SearchApp() {
   const [limit, setLimit] = useState(25);
 
   const abortRef = useRef<AbortController | null>(null);
+  const sentinelRef = useRef<HTMLDivElement>(null);
   const restoredRef = useRef(false);
   const hasResults = Boolean(data) || loading || Boolean(error);
 
@@ -136,6 +137,28 @@ export function SearchApp() {
       window.history.replaceState(null, "", next);
     }
   }, [name, scope, depth, sort, filters]);
+
+  /**
+   * Reveal more rows as the bottom of the list approaches.
+   *
+   * The whole result pool is already in memory, so this is pure windowing: no
+   * request, nothing to wait for. The sentinel sits below the last row with a
+   * generous rootMargin so the next batch is in place before the reader gets
+   * there and the list never visibly stalls.
+   */
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) setLimit((l) => l + 25);
+      },
+      { rootMargin: "600px 0px" },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [data, filters, sort]);
 
   const filtered = useMemo(() => {
     if (!data) return [] as ScoredEntity[];
@@ -351,12 +374,9 @@ export function SearchApp() {
           )}
 
           {filtered.length > limit && (
-            <button
-              onClick={() => setLimit((l) => l + 50)}
-              className="mt-5 text-[13px] text-accent hover:underline"
-            >
-              {t.showMore}
-            </button>
+            <div ref={sentinelRef} className="pt-5 text-[11px] text-faint" aria-live="polite">
+              {t.showingCount(limit, filtered.length)}
+            </div>
           )}
         </div>
       )}

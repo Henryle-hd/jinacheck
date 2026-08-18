@@ -46,7 +46,7 @@ export interface Copy {
   tryAgain: string;
   noResemble: string;
   noFilterMatch: string;
-  showMore: string;
+  showingCount: (shown: number, total: number) => string;
 
   // verdict
   why: string;
@@ -163,7 +163,7 @@ const en: Copy = {
   tryAgain: "Try again",
   noResemble: "No entry on the register resembles this name.",
   noFilterMatch: "Nothing matches these filters.",
-  showMore: "Show more results",
+  showingCount: (shown, total) => `Showing ${shown} of ${total}`,
 
   why: "Why",
   hideDetail: "Hide detail",
@@ -312,7 +312,7 @@ const sw: Copy = {
   tryAgain: "Jaribu tena",
   noResemble: "Hakuna jina katika daftari linalofanana na hili.",
   noFilterMatch: "Hakuna kinacholingana na vichujio hivi.",
-  showMore: "Onyesha matokeo zaidi",
+  showingCount: (shown, total) => `Inaonyesha ${shown} kati ya ${total}`,
 
   why: "Kwa nini",
   hideDetail: "Ficha maelezo",
