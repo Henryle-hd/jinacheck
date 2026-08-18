@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import type { ObjectType, ScoredEntity, SearchResponse } from "@/lib/types";
+import type { ScoredEntity, SearchResponse, SearchScope } from "@/lib/types";
 import {
   DEFAULT_STATE,
   readAppState,
@@ -16,7 +16,7 @@ import { VerdictLine } from "./verdict";
 
 export function SearchApp() {
   const [name, setName] = useState(DEFAULT_STATE.name);
-  const [objectType, setObjectType] = useState<ObjectType>(DEFAULT_STATE.objectType);
+  const [scope, setScope] = useState<SearchScope>(DEFAULT_STATE.scope);
   const [depth, setDepth] = useState<Depth>(DEFAULT_STATE.depth);
 
   const [data, setData] = useState<SearchResponse | null>(null);
@@ -47,14 +47,14 @@ export function SearchApp() {
      */
     async (overrides?: {
       name?: string;
-      objectType?: ObjectType;
+      scope?: SearchScope;
       depth?: Depth;
       /** Set when restoring a shared link, whose filters must survive the run. */
       keepFilters?: boolean;
     }) => {
       const payload = {
         name: overrides?.name ?? name,
-        objectType: overrides?.objectType ?? objectType,
+        scope: overrides?.scope ?? scope,
         depth: overrides?.depth ?? depth,
       };
       if (!payload.name.trim()) return;
@@ -91,7 +91,7 @@ export function SearchApp() {
         setLoading(false);
       }
     },
-    [name, objectType, depth],
+    [name, scope, depth],
   );
 
   /**
@@ -110,13 +110,13 @@ export function SearchApp() {
 
     // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time restore of shared-link state; cannot run during render without a hydration mismatch
     setName(s.name);
-    setObjectType(s.objectType);
+    setScope(s.scope);
     setDepth(s.depth);
     setSort(s.sort);
     setFilters(s.filters);
     void run({
       name: s.name,
-      objectType: s.objectType,
+      scope: s.scope,
       depth: s.depth,
       keepFilters: true,
     });
@@ -128,12 +128,12 @@ export function SearchApp() {
    * fiddling shouldn't fill up the back button.
    */
   useEffect(() => {
-    const query = writeAppState({ name, objectType, depth, sort, filters });
+    const query = writeAppState({ name, scope, depth, sort, filters });
     const next = `${window.location.pathname}${query}`;
     if (next !== `${window.location.pathname}${window.location.search}`) {
       window.history.replaceState(null, "", next);
     }
-  }, [name, objectType, depth, sort, filters]);
+  }, [name, scope, depth, sort, filters]);
 
   const filtered = useMemo(() => {
     if (!data) return [] as ScoredEntity[];
@@ -174,7 +174,7 @@ export function SearchApp() {
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder={
-            objectType === "ET-COMPANY" ? "Company name" : "Business name"
+            scope === "ET-BUSINESS" ? "Business name" : "Company name"
           }
           autoComplete="off"
           spellCheck={false}
@@ -202,30 +202,32 @@ export function SearchApp() {
     </form>
   );
 
-  // The toggle picks which naming rules apply — it does not scope the search.
-  // Both registers are always searched, since a name trading in either one is a
-  // real obstacle.
+  /**
+   * Which register to search. "All" is the default so a conflict in the other
+   * register is never hidden; picking one narrows the results and applies that
+   * register's naming rules (a company needs "Limited", a business name must
+   * not use it).
+   */
   const typeToggle = (
     <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[13px]">
-      <span className="text-faint">Registering a</span>
+      <span className="text-faint">Search</span>
       {(
         [
-          { v: "ET-COMPANY" as ObjectType, label: "Company" },
-          { v: "ET-BUSINESS" as ObjectType, label: "Business name" },
+          { v: "all" as SearchScope, label: "All" },
+          { v: "ET-COMPANY" as SearchScope, label: "Companies" },
+          { v: "ET-BUSINESS" as SearchScope, label: "Business names" },
         ] as const
       ).map((opt) => (
         <button
           key={opt.v}
           type="button"
           onClick={() => {
-            if (opt.v === objectType) return;
-            setObjectType(opt.v);
-            // Re-check straight away so the naming rules update. The register
-            // results are cached under the same key, so this is instant.
-            if (data || error) void run({ objectType: opt.v });
+            if (opt.v === scope) return;
+            setScope(opt.v);
+            if (data || error) void run({ scope: opt.v });
           }}
           className={
-            objectType === opt.v
+            scope === opt.v
               ? "font-medium text-ink underline decoration-accent decoration-2 underline-offset-4"
               : "text-muted hover:text-ink"
           }

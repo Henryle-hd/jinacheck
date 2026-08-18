@@ -198,8 +198,8 @@ export function FilterBar({
         </div>
       </Popover>
 
-      {/* Both registers are always searched, so being able to separate them
-          matters — a business name and a company are different obstacles. */}
+      {/* Only shown when the search covered both registers. A business name and
+          a company are different obstacles, so separating them is worth a filter. */}
       {data.facets.registers.length > 1 && (
         <Popover label="Register" active={filters.registers.length}>
           <CheckList

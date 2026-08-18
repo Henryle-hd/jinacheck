@@ -21,7 +21,7 @@ import { withCache } from "@/lib/cache";
 import { parseName, probeSet, probeTerms } from "@/lib/name";
 import { checkName } from "@/lib/rules";
 import { buildProposal, buildVerdict, scoreEntity } from "@/lib/score";
-import type { Entity, ObjectType, ScoredEntity, SearchResponse } from "@/lib/types";
+import type { Entity, ObjectType, ScoredEntity, SearchResponse, SearchScope } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -63,8 +63,8 @@ export async function POST(request: Request) {
 
   const name = String(payload.name ?? "").trim();
   const number = String(payload.number ?? "").trim();
-  const objectType: ObjectType =
-    payload.objectType === "ET-BUSINESS" ? "ET-BUSINESS" : "ET-COMPANY";
+  const scope: SearchScope =
+    payload.scope === "ET-BUSINESS" || payload.scope === "ET-COMPANY" ? payload.scope : "all";
   const depthKey: DepthKey =
     payload.depth === "quick" || payload.depth === "deep" ? payload.depth : "standard";
 
@@ -78,7 +78,7 @@ export async function POST(request: Request) {
   const parts = parseName(name);
   // A bare number lookup isn't a registrability question, so the naming rules
   // don't apply to it.
-  const flags = name ? checkName(name, objectType) : [];
+  const flags = name ? checkName(name, scope) : [];
 
   // A number lookup is an exact query; a name check needs the token probes.
   const isNumberLookup = !name && !!number;
@@ -100,15 +100,13 @@ export async function POST(request: Request) {
   const pagesPerTerm = Math.max(1, Math.floor(REQUEST_BUDGET[depthKey] / terms.length));
   const perTermLimit = Math.min(DEPTH[depthKey], pagesPerTerm * PAGE_SIZE);
 
-  // Search BOTH registers regardless of what the user intends to register.
-  //
-  // BRELA splits the register in two and its public search makes you pick one,
-  // which is how a live business name like "QUICKLEE DIGITAL EXPERIENCES" stays
-  // invisible to anyone checking as a company. A name already trading in the
-  // other register is a real conflict, so both are always searched; `objectType`
-  // only decides which naming rules apply.
-  const REGISTERS: ObjectType[] = ["ET-COMPANY", "ET-BUSINESS"];
-  const cacheKey = `search:both:${depthKey}:${terms.join("+")}:${isNumberLookup ? "num" : "name"}`;
+  // BRELA splits the register in two and its own public search makes you pick
+  // one, which is how a live business name like "QUICKLEE DIGITAL EXPERIENCES"
+  // stays invisible to anyone checking as a company. So "all" is the default and
+  // covers both; narrowing is an explicit choice.
+  const REGISTERS: ObjectType[] =
+    scope === "all" ? ["ET-COMPANY", "ET-BUSINESS"] : [scope];
+  const cacheKey = `search:${scope}:${depthKey}:${terms.join("+")}:${isNumberLookup ? "num" : "name"}`;
 
   let pool: Entity[];
   let reports: SearchResponse["meta"]["probes"];
@@ -193,8 +191,8 @@ export async function POST(request: Request) {
   const response: SearchResponse = {
     query: {
       name,
-      objectType,
       number: number || undefined,
+      scope,
       core: parts.core,
       tokens: terms,
       variants,

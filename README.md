@@ -20,9 +20,10 @@ worth searching, so that is what gets sent upstream.
 **Searches both registers at once.** BRELA keeps companies and business names in
 separate silos and its public search makes you pick one, so a live business name
 like `QUICKLEE DIGITAL EXPERIENCES` is invisible to anyone checking as a company.
-It returns zero results. Both registers are always searched, and each hit is
-labelled with the register it came from. The Company / Business name toggle only
-decides which naming rules apply to *your* name.
+It returns zero results. Here the default searches both, and each hit is
+labelled with the register it came from. You can narrow to Companies or Business
+names when you want to, and that choice also applies that register's naming
+rules: a company needs "Limited", a business name must not use it.
 
 **Catches names that only sound the same.** The upstream search is substring-only,
 so `NYIKA` can never surface `NIKA COMPANY LIMITED`, yet those two collide
@@ -107,8 +108,14 @@ it is:
 
 ## Scope
 
-Risk scores and rule flags are decision-support heuristics modelled on the tests
-in the Companies Act (Cap. 212) and the Business Names (Registration) Act
-(Cap. 213). They are not a legal determination, and they do not reserve a name. The
-Registrar has discretion and the final say. Entries may also be absent from the
-public search.
+Risk scores and naming flags are our own reading of the Companies Act (Cap. 212)
+and the Business Names (Registration) Act (Cap. 213). They were **not**
+transcribed from BRELA's published guidance, and they carry no section numbers
+because those were not verified against the statute text. Where the register
+could settle a question it was checked, and one rule did not survive: business
+names using "Limited" are unusual but demonstrably accepted (around 37 sit on the
+register), so that is a note rather than a bar.
+
+They are not a legal determination, and they do not reserve a name. The Registrar
+has discretion and the final say. Entries may also be absent from the public
+search.

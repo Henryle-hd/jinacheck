@@ -40,9 +40,10 @@ export default function Home() {
           </a>
           , which you can also search directly. That register only covers entries held in BRELA’s
           Online Registration System, so older registrations may not appear here at all. Risk
-          scores are guidance based on the Companies Act (Cap. 212) and the Business Names
-          (Registration) Act (Cap. 213). They are not a legal determination, and checking a name
-          here does not reserve it. The Registrar decides.
+          scores and naming flags are our own reading of the Companies Act (Cap. 212) and the
+          Business Names (Registration) Act (Cap. 213), not BRELA’s published policy, so treat
+          them as a prompt to check rather than an answer. They are not a legal determination,
+          and checking a name here does not reserve it. The Registrar decides.
         </p>
       </footer>
     </>

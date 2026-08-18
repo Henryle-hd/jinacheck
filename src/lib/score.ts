@@ -1,9 +1,9 @@
 /**
  * Conflict scoring: how likely is this existing entry to block the name you want?
  *
- * The statutory test is whether a proposed name is identical to one already on
- * the register, or "so nearly resembles it as to be calculated to deceive"
- * (Companies Act, Cap. 212, s. 14). That is a similarity judgement, so we score
+ * The test being approximated is whether a proposed name is identical to one
+ * already on the register, or so nearly resembles it as to be calculated to
+ * deceive (Companies Act, Cap. 212). That is a similarity judgement, so we score
  * it as one — on the distinctive core, not the decorated full name — and show
  * the reasoning rather than just a number.
  */

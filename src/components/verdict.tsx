@@ -66,7 +66,7 @@ export function VerdictLine({ data }: { data: SearchResponse }) {
                   <span className="min-w-0">
                     <span className="font-medium text-ink">{f.title}.</span>{" "}
                     <span className="text-muted">{f.detail}</span>
-                    {f.authority && <span className="text-faint"> {f.authority}.</span>}
+                    {f.authority && <span className="text-faint"> See {f.authority}.</span>}
                   </span>
                 </li>
               ))}
@@ -92,9 +92,12 @@ export function VerdictLine({ data }: { data: SearchResponse }) {
                 as legal-form or descriptive wording
               </>
             )}
-            . Both the company and business-name registers were searched. The
-            Company / Business name choice above changes which naming rules apply to
-            your name; it does not narrow the search.{" "}
+            .{" "}
+            {query.scope === "all"
+              ? "Both the company and business-name registers were searched."
+              : query.scope === "ET-COMPANY"
+                ? "Only the company register was searched. Switch to All to include business names, which can conflict too."
+                : "Only the business-name register was searched. Switch to All to include companies, which can conflict too."}{" "}
             {data.meta.pool.toLocaleString()} entries examined
             {data.meta.cached ? " (cached)" : ` in ${(data.meta.ms / 1000).toFixed(1)}s`}
             {data.meta.truncated && "; the register held more, so try a deeper search"}.

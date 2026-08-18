@@ -1,14 +1,26 @@
 /**
  * Registrability checks applied to the *proposed* name itself.
  *
- * These encode the tests a BRELA examiner applies under the Companies Act
- * (Cap. 212) and the Business Names (Registration) Act (Cap. 213), plus the
- * sector statutes that reserve particular words. They are decision-support
- * heuristics, not a determination — the Registrar has discretion and the final
- * say. Every flag names its authority so a user can check it themselves.
+ * PROVENANCE, because it matters: these rules were written from general
+ * knowledge of Tanzanian company law, NOT transcribed from BRELA's published
+ * guidance or checked against the statute text. `authority` names the Act a rule
+ * derives from so a user can go and read it; it is a pointer, not a verified
+ * pinpoint citation, which is why no section numbers are given.
+ *
+ * Where the register itself could settle a question, it was consulted:
+ *   - "A company name must include Limited/PLC" holds in a 300-name sample of
+ *     the company register (300/300 carry a Limited or PLC form).
+ *   - "A business name may not use Limited" turned out to be FALSE. The business
+ *     register holds ~37 such names (e.g. "WEJISA COMPANY LIMITED"), so that
+ *     check is an advisory note rather than a blocker.
+ *   - Standalone "BANK" in the company register is used almost exclusively by
+ *     licensed banks, which is consistent with the word being restricted.
+ *
+ * Anything not listed above is unverified. Treat the whole module as
+ * decision support; the Registrar decides.
  */
 
-import type { NameFlag, ObjectType } from "./types";
+import type { NameFlag, SearchScope } from "./types";
 import { GENERIC_WORDS, parseName } from "./name";
 
 interface RestrictedRule {
@@ -63,7 +75,7 @@ const RESTRICTED: RestrictedRule[] = [
     title: "Suggests a connection with Government",
     detail:
       "A name that implies State patronage or official status is treated as undesirable unless that connection genuinely exists and is consented to in writing.",
-    authority: "Companies Act (Cap. 212) s. 14",
+    authority: "Companies Act (Cap. 212)",
     severity: "warning",
   },
   {
@@ -72,7 +84,7 @@ const RESTRICTED: RestrictedRule[] = [
     title: "Implies royal or sovereign patronage",
     detail:
       "Words suggesting royal endorsement are routinely queried by the Registrar and usually require evidence of entitlement.",
-    authority: "Companies Act (Cap. 212) s. 14",
+    authority: "Companies Act (Cap. 212)",
     severity: "warning",
   },
   {
@@ -99,7 +111,7 @@ const RESTRICTED: RestrictedRule[] = [
     title: "Protected international name",
     detail:
       "Names of intergovernmental bodies, the Red Cross emblem and Olympic marks are protected and cannot be appropriated.",
-    authority: "Companies Act (Cap. 212) s. 14; international obligations",
+    authority: "Companies Act (Cap. 212); international obligations",
     severity: "warning",
   },
   {
@@ -127,9 +139,13 @@ const OFFENSIVE_HINTS = ["FUCK", "SHIT", "ASS", "BITCH", "NAZI", "HITLER", "ISIS
 
 /**
  * Run every registrability check against the proposed name.
- * `objectType` matters: suffix rules apply to companies, not business names.
+ *
+ * `scope` matters for the legal-form rules only. "Limited" is required on a
+ * company and forbidden on a business name, so when the scope is "all" we
+ * cannot know which applies and both are skipped. Every other check is about
+ * the words themselves and runs regardless.
  */
-export function checkName(raw: string, objectType: ObjectType): NameFlag[] {
+export function checkName(raw: string, scope: SearchScope): NameFlag[] {
   const flags: NameFlag[] = [];
   const parts = parseName(raw);
   const tokenSet = new Set(parts.tokens);
@@ -154,7 +170,7 @@ export function checkName(raw: string, objectType: ObjectType): NameFlag[] {
       title: "Name is too short",
       detail:
         "A one- or two-character name will not be accepted as distinctive, and the public register cannot even be searched on it.",
-      authority: "Companies Act (Cap. 212) s. 14",
+      authority: "Companies Act (Cap. 212)",
     });
   }
 
@@ -164,7 +180,7 @@ export function checkName(raw: string, objectType: ObjectType): NameFlag[] {
       severity: "blocker",
       title: "Numbers alone are not a name",
       detail: "A name made only of digits carries no distinctive character.",
-      authority: "Companies Act (Cap. 212) s. 14",
+      authority: "Companies Act (Cap. 212)",
     });
   }
 
@@ -177,7 +193,7 @@ export function checkName(raw: string, objectType: ObjectType): NameFlag[] {
       detail:
         `Every word here (${parts.generic.join(", ")}) is a common trade term used across thousands of entries. ` +
         "Add something distinctive, like a coined word or a family name, or expect a “too general” query.",
-      authority: "Companies Act (Cap. 212) s. 14",
+      authority: "Companies Act (Cap. 212)",
     });
   } else if (parts.distinctive.length === 1 && parts.distinctive[0].length <= 3) {
     flags.push({
@@ -193,24 +209,24 @@ export function checkName(raw: string, objectType: ObjectType): NameFlag[] {
   const hasLimited = tokenSet.has("LIMITED") || tokenSet.has("LTD");
   const hasPlc = tokenSet.has("PLC");
 
-  if (objectType === "ET-COMPANY" && !hasLimited && !hasPlc) {
+  if (scope === "ET-COMPANY" && !hasLimited && !hasPlc) {
     flags.push({
       id: "missing-limited",
       severity: "warning",
       title: "Company name must end in “Limited”",
       detail:
         "A company limited by shares must have “Limited” (or “Public Limited Company”/PLC if public) as the last word of its name. Add it before filing.",
-      authority: "Companies Act (Cap. 212) s. 4 and s. 30",
+      authority: "Companies Act (Cap. 212)",
     });
   }
 
-  if (objectType === "ET-BUSINESS" && (hasLimited || hasPlc)) {
+  if (scope === "ET-BUSINESS" && (hasLimited || hasPlc)) {
     flags.push({
       id: "business-with-limited",
-      severity: "blocker",
-      title: "A business name cannot use “Limited”",
+      severity: "info",
+      title: "“Limited” on a business name is unusual",
       detail:
-        "“Limited” claims limited liability that a registered business name does not have, which is misleading. Either drop the word or incorporate a company instead.",
+        "A registered business name is not an incorporated company, so “Limited” implies limited liability it does not carry. BRELA has accepted such names before (the register holds several), so treat this as a caution rather than a bar. If you want limited liability, incorporate a company instead.",
       authority: "Business Names (Registration) Act (Cap. 213)",
     });
   }
@@ -242,7 +258,7 @@ export function checkName(raw: string, objectType: ObjectType): NameFlag[] {
       title: "Likely to be refused as undesirable",
       detail:
         "The Registrar may refuse any name considered offensive or undesirable. This one will not survive examination.",
-      authority: "Companies Act (Cap. 212) s. 14",
+      authority: "Companies Act (Cap. 212)",
     });
   }
 
