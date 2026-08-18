@@ -14,9 +14,11 @@
  * changing a filter is instant instead of re-paying the register's ~15s cost.
  */
 
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 
 import { probeMany } from "@/lib/brela";
+import { dbEnabled, recordSearch, upsertEntities } from "@/lib/db";
+import { readRequestMeta } from "@/lib/request-meta";
 import { withCache } from "@/lib/cache";
 import { parseName, probeSet, probeTerms } from "@/lib/name";
 import { searchCacheKey } from "@/lib/search-key";
@@ -223,6 +225,47 @@ export async function POST(request: Request) {
       fetchedAt: new Date().toISOString(),
     },
   };
+
+  /**
+   * Persist after the response.
+   *
+   * `after` runs once the answer is already on its way, so mirroring a large
+   * result set never adds a millisecond to what the user waits for. Failures
+   * are logged and dropped: the search worked, and that is what matters.
+   */
+  if (dbEnabled()) {
+    const meta = readRequestMeta(request);
+    const lang = request.headers.get("accept-language")?.slice(0, 12) ?? null;
+
+    after(async () => {
+      try {
+        // Reuse the cores already computed while scoring rather than parsing again.
+        const cores = new Map(results.map((r) => [r.uid, r.core]));
+        await upsertEntities(results, cores);
+        await recordSearch({
+          queryName: name,
+          queryCore: parts.core,
+          terms,
+          scope,
+          depth: depthKey,
+          resultCount: results.length,
+          topScore: verdict.topScore,
+          verdictBand: verdict.band,
+          flagIds: flags.map((f) => f.id),
+          durationMs: Date.now() - started,
+          fromCache: cached,
+          truncated: reports.some((r) => r.truncated),
+          lang,
+          meta,
+        });
+      } catch (err) {
+        // Never surfaced: the search already succeeded and the answer is gone.
+        // Whatever failed to land here gets another chance the next time anyone
+        // searches over the same ground.
+        console.warn("[jinacheck] persistence skipped", err);
+      }
+    });
+  }
 
   return NextResponse.json(response, {
     headers: { "Cache-Control": "no-store" },
