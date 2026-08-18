@@ -1,1 +1,1 @@
-JinaCheck showing a search for NYIKA VENTURES LIMITED, with the verdict "Almost certainly refused" and a ranked list of similar names already on the BRELA register.
+JinaCheck: a search box asking "Is the name you want already taken at BRELA?", with options to search all registers, companies, or business names.

@@ -54,74 +54,116 @@ async function copyText(text: string): Promise<boolean> {
 }
 
 /**
- * Icon button that copies `value` and briefly confirms.
+ * Copy button with a choice of what to copy.
  *
- * Hidden until the row is hovered on pointer devices, but always visible on
- * small screens, where there is no hover to reveal it.
+ * A register entry is useful two ways: the bare name, to paste into a form, and
+ * the whole record, to keep alongside it. Rather than guess, the button opens a
+ * short menu. It stays visible while that menu is open, otherwise it would
+ * vanish the moment the pointer left the row.
  */
-export function CopyButton({
-  value,
+export function CopyMenu({
+  options,
   label = "Copy",
   doneLabel = "Copied",
 }: {
-  value: string;
+  options: Array<{ label: string; value: string }>;
   label?: string;
   doneLabel?: string;
 }) {
-  const [state, setState] = useState<"idle" | "done" | "failed">("idle");
+  const [open, setOpen] = useState(false);
+  const [done, setDone] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (state === "idle") return;
-    const id = setTimeout(() => setState("idle"), 1600);
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  useEffect(() => {
+    if (!done) return;
+    const id = setTimeout(() => setDone(false), 1600);
     return () => clearTimeout(id);
-  }, [state]);
+  }, [done]);
 
   return (
-    <button
-      type="button"
-      onClick={async (e) => {
-        e.stopPropagation();
-        setState((await copyText(value)) ? "done" : "failed");
-      }}
-      title={state === "done" ? doneLabel : label}
-      aria-label={label}
-      className={`shrink-0 rounded p-1 transition-opacity hover:bg-raised focus-visible:opacity-100 sm:opacity-0 sm:group-hover:opacity-100 ${
-        state === "done" ? "text-clear sm:opacity-100" : "text-faint hover:text-ink"
-      }`}
-    >
-      {state === "done" ? (
-        <svg viewBox="0 0 16 16" className="size-3.5" aria-hidden>
-          <path
-            d="M3.5 8.5l3 3 6-7"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.6"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-      ) : (
-        <svg viewBox="0 0 16 16" className="size-3.5" aria-hidden>
-          <rect
-            x="5.5"
-            y="5.5"
-            width="8"
-            height="8"
-            rx="1.5"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.3"
-          />
-          <path
-            d="M10.5 3.5v-1a1 1 0 0 0-1-1h-6a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h1"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.3"
-            strokeLinecap="round"
-          />
-        </svg>
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          setOpen((s) => !s);
+        }}
+        title={done ? doneLabel : label}
+        aria-label={label}
+        aria-expanded={open}
+        className={`shrink-0 rounded p-1 transition-opacity hover:bg-raised focus-visible:opacity-100 sm:opacity-0 sm:group-hover:opacity-100 ${
+          done ? "text-clear sm:opacity-100" : "text-faint hover:text-ink"
+        } ${open ? "bg-raised text-ink sm:opacity-100" : ""}`}
+      >
+        {done ? (
+          <svg viewBox="0 0 16 16" className="size-3.5" aria-hidden>
+            <path
+              d="M3.5 8.5l3 3 6-7"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.6"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        ) : (
+          <svg viewBox="0 0 16 16" className="size-3.5" aria-hidden>
+            <rect
+              x="5.5"
+              y="5.5"
+              width="8"
+              height="8"
+              rx="1.5"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.3"
+            />
+            <path
+              d="M10.5 3.5v-1a1 1 0 0 0-1-1h-6a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h1"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.3"
+              strokeLinecap="round"
+            />
+          </svg>
+        )}
+      </button>
+
+      {open && (
+        <div className="absolute right-0 z-30 mt-1 w-max min-w-32 overflow-hidden rounded-lg border border-line bg-surface py-1 shadow-(--shadow-md)">
+          {options.map((o) => (
+            <button
+              key={o.label}
+              type="button"
+              onClick={async (e) => {
+                e.stopPropagation();
+                setOpen(false);
+                setDone(await copyText(o.value));
+              }}
+              className="block w-full px-3 py-1.5 text-left text-[13px] text-ink-soft hover:bg-raised hover:text-ink"
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>
       )}
-    </button>
+    </div>
   );
 }
 
