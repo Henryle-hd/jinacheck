@@ -119,8 +119,10 @@ export function VerdictLine({ data }: { data: SearchResponse }) {
               : query.scope === "ET-COMPANY"
                 ? t.onlyCompanyRegister
                 : t.onlyBusinessRegister}{" "}
+            {/* How many entries were weighed says something about how much a
+                clear result is worth. Whether our cache served them does not,
+                so it is not shown. */}
             {data.meta.pool.toLocaleString()} {t.entriesExamined}
-            {data.meta.cached ? ` ${t.cached}` : ` in ${(data.meta.ms / 1000).toFixed(1)}s`}
             {data.meta.truncated && `; ${t.heldMore}`}.
           </p>
         </div>

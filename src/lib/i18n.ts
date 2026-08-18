@@ -58,7 +58,6 @@ export interface Copy {
   onlyCompanyRegister: string;
   onlyBusinessRegister: string;
   entriesExamined: string;
-  cached: string;
   heldMore: string;
 
   // filters
@@ -176,7 +175,6 @@ const en: Copy = {
   onlyBusinessRegister:
     "Only the business-name register was searched. Switch to All to include companies, which can conflict too.",
   entriesExamined: "entries examined",
-  cached: "(cached)",
   heldMore: "the register held more, so try a deeper search",
 
   results: (n) => `${n.toLocaleString()} result${n === 1 ? "" : "s"}`,
@@ -325,7 +323,6 @@ const sw: Copy = {
   onlyBusinessRegister:
     "Ni daftari la majina ya biashara pekee lililotafutwa. Chagua Zote ili kujumuisha makampuni, ambayo pia yanaweza kugongana.",
   entriesExamined: "majina yamechunguzwa",
-  cached: "(yamehifadhiwa)",
   heldMore: "daftari lilikuwa na mengi zaidi, jaribu utafutaji wa kina",
 
   results: (n) => `Matokeo ${n.toLocaleString()}`,
