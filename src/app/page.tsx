@@ -1,11 +1,14 @@
 import { SearchApp } from "@/components/search-app";
+import { LangProvider, LangToggle } from "@/components/lang";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { BRELA_SEARCH_URL, GITHUB_URL } from "@/lib/links";
+import { Footer } from "@/components/footer";
+import { GITHUB_URL } from "@/lib/links";
 
 export default function Home() {
   return (
-    <>
+    <LangProvider>
       <div className="flex shrink-0 items-center justify-end gap-2 px-4 pt-3 sm:px-6">
+        <LangToggle />
         <a
           href={GITHUB_URL}
           target="_blank"
@@ -27,25 +30,7 @@ export default function Home() {
         <SearchApp />
       </main>
 
-      <footer className="mx-auto w-full max-w-3xl px-4 py-5">
-        <p className="text-[11px] leading-relaxed text-faint">
-          Live data from the{" "}
-          <a
-            href={BRELA_SEARCH_URL}
-            target="_blank"
-            rel="noreferrer noopener"
-            className="hover:text-accent hover:underline"
-          >
-            BRELA public register
-          </a>
-          , which you can also search directly. That register only covers entries held in BRELA’s
-          Online Registration System, so older registrations may not appear here at all. Risk
-          scores and naming flags are our own reading of the Companies Act (Cap. 212) and the
-          Business Names (Registration) Act (Cap. 213), not BRELA’s published policy, so treat
-          them as a prompt to check rather than an answer. They are not a legal determination,
-          and checking a name here does not reserve it. The Registrar decides.
-        </p>
-      </footer>
-    </>
+      <Footer />
+    </LangProvider>
   );
 }

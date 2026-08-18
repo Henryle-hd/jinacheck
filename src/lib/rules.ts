@@ -1,23 +1,44 @@
 /**
  * Registrability checks applied to the *proposed* name itself.
  *
- * PROVENANCE, because it matters: these rules were written from general
- * knowledge of Tanzanian company law, NOT transcribed from BRELA's published
- * guidance or checked against the statute text. `authority` names the Act a rule
- * derives from so a user can go and read it; it is a pointer, not a verified
- * pinpoint citation, which is why no section numbers are given.
+ * PROVENANCE. The business-name rules below are taken from the text of the
+ * Business Names (Registration) Act (Cap. 213), s. 9, as published by TanzLII
+ * (legislation as at 31 July 2002; amendments 3/2012, 5/2021 and 5/2022 are not
+ * yet applied to that consolidation). Those carry pinpoint citations.
  *
- * Where the register itself could settle a question, it was consulted:
- *   - "A company name must include Limited/PLC" holds in a 300-name sample of
- *     the company register (300/300 carry a Limited or PLC form).
- *   - "A business name may not use Limited" turned out to be FALSE. The business
- *     register holds ~37 such names (e.g. "WEJISA COMPANY LIMITED"), so that
- *     check is an advisory note rather than a blocker.
- *   - Standalone "BANK" in the company register is used almost exclusively by
- *     licensed banks, which is consistent with the word being restricted.
+ * s. 9(1) requires the Registrar to refuse a business name which:
+ *   (a) contains a word likely to mislead the public as to the nationality,
+ *       race or religion of the owners. NOT auto-detected here: the test turns
+ *       on whether the name misleads about who owns the business, which cannot
+ *       be judged from the string alone, and guessing would flag ordinary names.
+ *   (b) includes "Imperial", "Royal", "Empire", "Commonwealth", "Government" or
+ *       "Municipal", or any word suggesting royal patronage or a Government
+ *       connection.
+ *   (c) includes "building society" or "co-operative", any equivalent in another
+ *       language, or an abbreviation of either.
+ *   (d) is identical with or similar to a name already registered under that
+ *       Act, the Companies Act (Cap. 212) or the Co-operative Societies Act
+ *       (Cap. 211), where the Registrar considers it likely to mislead.
+ *       Paragraph (d) is why this app searches both registers by default.
  *
- * Anything not listed above is unverified. Treat the whole module as
- * decision support; the Registrar decides.
+ * s. 9(2)-(3) also let you ask the Registrar to rule on a proposed name in
+ * advance; once cleared you are entitled to it for 28 days.
+ *
+ * Everything NOT carrying a pinpoint citation is weaker: sector rules are
+ * attributed to the Act that regulates the activity but were not read from the
+ * statute text, and the Companies Act itself has not been checked, so
+ * company-side rules name the Act only. Where the register could settle a
+ * question it was consulted:
+ *   - A company name carrying a Limited/PLC form: 300/300 in a sample.
+ *   - "A business name may not use Limited": FALSE. Cap. 213 s. 9 contains no
+ *     such bar and the register holds ~37 (e.g. "WEJISA COMPANY LIMITED"), so
+ *     it is an advisory note, not a blocker.
+ *   - Standalone "BANK" in the company register is almost exclusively licensed
+ *     banks, consistent with the word being restricted.
+ *   - "Tanzania" is described as needing consent by some practice guides, but
+ *     the register is full of accepted names using it, so no flag is raised.
+ *
+ * The Registrar decides; this module is decision support.
  */
 
 import type { NameFlag, SearchScope } from "./types";
@@ -74,17 +95,20 @@ const RESTRICTED: RestrictedRule[] = [
     ],
     title: "Suggests a connection with Government",
     detail:
-      "A name that implies State patronage or official status is treated as undesirable unless that connection genuinely exists and is consented to in writing.",
-    authority: "Companies Act (Cap. 212)",
+      "The Registrar shall refuse a business name including “Government” or “Municipal”, or any word importing a connection with, or recognition by, the Government or a local authority.",
+    authority: "Business Names (Registration) Act (Cap. 213) s. 9(1)(b)",
     severity: "warning",
   },
   {
     id: "sovereign",
-    words: ["ROYAL", "IMPERIAL", "CROWN", "KINGDOM"],
-    title: "Implies royal or sovereign patronage",
+    // "Imperial", "Royal", "Empire" and "Commonwealth" are named in the statute
+    // itself. CROWN and KINGDOM are not: they ride on the same paragraph's
+    // catch-all for "any other word" suggesting royal patronage.
+    words: ["IMPERIAL", "ROYAL", "EMPIRE", "COMMONWEALTH", "CROWN", "KINGDOM"],
+    title: "Implies royal patronage",
     detail:
-      "Words suggesting royal endorsement are routinely queried by the Registrar and usually require evidence of entitlement.",
-    authority: "Companies Act (Cap. 212)",
+      "The Registrar shall refuse a business name including “Imperial”, “Royal”, “Empire” or “Commonwealth”, or any word suggesting the business enjoys royal patronage.",
+    authority: "Business Names (Registration) Act (Cap. 213) s. 9(1)(b)",
     severity: "warning",
   },
   {
@@ -116,12 +140,15 @@ const RESTRICTED: RestrictedRule[] = [
   },
   {
     id: "cooperative",
-    words: ["COOPERATIVE", "COOPERATIVES", "CHAMBER", "FEDERATION", "UNION", "SOCIETY", "USHIRIKA"],
-    title: "Society / cooperative wording is reserved",
+    // The statute names "building society" and "co-operative" (and equivalents
+    // in any language, and abbreviations). CHAMBER / FEDERATION / UNION /
+    // SOCIETY were my own additions and are not restricted, so they are gone.
+    words: ["COOPERATIVE", "CO-OPERATIVE", "COOPERATIVES", "USHIRIKA"],
+    title: "“Co-operative” is a restricted word",
     detail:
-      "Cooperative societies and unions register under their own statute with the Registrar of Cooperatives, not as ordinary companies.",
-    authority: "Cooperative Societies Act, 2013",
-    severity: "info",
+      "The Registrar shall refuse a business name including “building society” or “co-operative”, their equivalent in any other language, or any abbreviation of them. Co-operatives register under their own statute.",
+    authority: "Business Names (Registration) Act (Cap. 213) s. 9(1)(c); Co-operative Societies Act (Cap. 211)",
+    severity: "warning",
   },
   {
     id: "trust",
@@ -246,6 +273,19 @@ export function checkName(raw: string, scope: SearchScope): NameFlag[] {
       title: rule.title,
       detail: `“${hit}”: ${rule.detail}`,
       authority: rule.authority,
+    });
+  }
+
+  // "building society" is a two-word phrase, so the token-based loop above
+  // cannot see it.
+  if (/\bBUILDING\s+SOCIET(Y|IES)\b/.test(parts.full)) {
+    flags.push({
+      id: "building-society",
+      severity: "warning",
+      title: "“Building society” is a restricted phrase",
+      detail:
+        "The Registrar shall refuse a business name that includes “building society”, its equivalent in any other language, or an abbreviation of it.",
+      authority: "Business Names (Registration) Act (Cap. 213) s. 9(1)(c)",
     });
   }
 

@@ -1,9 +1,12 @@
 /**
  * Conflict scoring: how likely is this existing entry to block the name you want?
  *
- * The test being approximated is whether a proposed name is identical to one
- * already on the register, or so nearly resembles it as to be calculated to
- * deceive (Companies Act, Cap. 212). That is a similarity judgement, so we score
+ * The test being approximated: the Registrar must refuse a name "identical with
+ * or similar to" one already registered under the Business Names (Registration)
+ * Act, the Companies Act (Cap. 212) or the Co-operative Societies Act (Cap. 211)
+ * where that would be likely to mislead the public (Cap. 213 s. 9(1)(d)). Note
+ * it spans registers, which is why both are searched. That is a judgement call
+ * about similarity, so we score
  * it as one — on the distinctive core, not the decorated full name — and show
  * the reasoning rather than just a number.
  */

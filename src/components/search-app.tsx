@@ -11,10 +11,12 @@ import {
   type Sort,
 } from "@/lib/url-state";
 import { applyFilters, EMPTY_FILTERS, FilterBar, type FilterState } from "./filters";
+import { useCopy } from "./lang";
 import { ResultRow } from "./result-row";
 import { VerdictLine } from "./verdict";
 
 export function SearchApp() {
+  const { t } = useCopy();
   const [name, setName] = useState(DEFAULT_STATE.name);
   const [scope, setScope] = useState<SearchScope>(DEFAULT_STATE.scope);
   const [depth, setDepth] = useState<Depth>(DEFAULT_STATE.depth);
@@ -78,20 +80,20 @@ export function SearchApp() {
         });
         const body = await res.json();
         if (!res.ok) {
-          setError(body.error ?? "The search failed. Try again.");
+          setError(body.error ?? t.searchFailed);
           setData(null);
         } else {
           setData(body as SearchResponse);
         }
       } catch (err) {
         if (err instanceof Error && err.name === "AbortError") return;
-        setError(err instanceof Error ? err.message : "Could not reach the search service.");
+        setError(err instanceof Error ? err.message : t.searchFailed);
         setData(null);
       } finally {
         setLoading(false);
       }
     },
-    [name, scope, depth],
+    [name, scope, depth, t],
   );
 
   /**
@@ -174,18 +176,18 @@ export function SearchApp() {
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder={
-            scope === "ET-BUSINESS" ? "Business name" : "Company name"
+            scope === "ET-BUSINESS" ? t.namePlaceholderBusiness : t.namePlaceholderCompany
           }
           autoComplete="off"
           spellCheck={false}
-          aria-label="Name you want to register"
+          aria-label={t.nameAriaLabel}
           className="min-w-0 flex-1 bg-transparent text-[15px] text-ink outline-none placeholder:text-faint"
         />
         {name && (
           <button
             type="button"
             onClick={() => setName("")}
-            aria-label="Clear"
+            aria-label={t.clear}
             className="shrink-0 px-1 text-faint hover:text-ink"
           >
             ×
@@ -196,7 +198,7 @@ export function SearchApp() {
           disabled={loading || !name.trim()}
           className="shrink-0 rounded-full bg-accent px-4 py-1.5 text-[13px] font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-40 dark:text-[#04231f]"
         >
-          {loading ? "…" : "Check"}
+          {loading ? t.checking : t.check}
         </button>
       </div>
     </form>
@@ -210,12 +212,12 @@ export function SearchApp() {
    */
   const typeToggle = (
     <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[13px]">
-      <span className="text-faint">Search</span>
+      <span className="text-faint">{t.searchLabel}</span>
       {(
         [
-          { v: "all" as SearchScope, label: "All" },
-          { v: "ET-COMPANY" as SearchScope, label: "Companies" },
-          { v: "ET-BUSINESS" as SearchScope, label: "Business names" },
+          { v: "all" as SearchScope, label: t.scopeAll },
+          { v: "ET-COMPANY" as SearchScope, label: t.scopeCompany },
+          { v: "ET-BUSINESS" as SearchScope, label: t.scopeBusiness },
         ] as const
       ).map((opt) => (
         <button
@@ -243,12 +245,12 @@ export function SearchApp() {
           setDepth(next);
           if (data || error) void run({ depth: next });
         }}
-        aria-label="Search depth"
+        aria-label={t.depthLabel}
         className="bg-transparent text-muted outline-none hover:text-ink"
       >
-        <option value="quick">Quick</option>
-        <option value="standard">Standard</option>
-        <option value="deep">Deep</option>
+        <option value="quick">{t.depthQuick}</option>
+        <option value="standard">{t.depthStandard}</option>
+        <option value="deep">{t.depthDeep}</option>
       </select>
     </div>
   );
@@ -263,7 +265,7 @@ export function SearchApp() {
           Jina<span className="text-accent">Check</span>
         </h1>
         <p className="mt-2 text-center text-[14px] text-muted">
-          Is the name you want already taken at BRELA?
+          {t.tagline}
         </p>
 
         <div className="mt-7 w-full">{searchField}</div>
@@ -283,11 +285,11 @@ export function SearchApp() {
       {loading && (
         <div className="pt-8">
           <p className="text-[13px] text-muted">
-            Searching the register…{" "}
+            {t.searchingRegister}{" "}
             <span className="tnum text-faint">{elapsed}s</span>
           </p>
           <p className="mt-1 text-[12px] text-faint">
-            BRELA can take 15 to 30 seconds on common words. Filtering afterwards is instant.
+            {t.slowNote}
           </p>
           <ul className="mt-6 space-y-5">
             {[0, 1, 2, 3, 4, 5].map((i) => (
@@ -302,13 +304,13 @@ export function SearchApp() {
 
       {error && !loading && (
         <div className="pt-8">
-          <p className="text-[14px] font-medium text-critical">Search could not complete</p>
+          <p className="text-[14px] font-medium text-critical">{t.searchFailed}</p>
           <p className="mt-1 text-[13px] leading-relaxed text-muted">{error}</p>
           <button
             onClick={() => void run()}
             className="mt-2 text-[13px] text-accent hover:underline"
           >
-            Try again
+            {t.tryAgain}
           </button>
         </div>
       )}
@@ -331,8 +333,8 @@ export function SearchApp() {
           {filtered.length === 0 ? (
             <p className="pt-8 text-[13px] text-muted">
               {data.results.length === 0
-                ? "No entry on the register resembles this name."
-                : "Nothing matches these filters."}
+                ? t.noResemble
+                : t.noFilterMatch}
             </p>
           ) : (
             <ul className="mt-1 divide-y divide-line">
@@ -347,7 +349,7 @@ export function SearchApp() {
               onClick={() => setLimit((l) => l + 50)}
               className="mt-5 text-[13px] text-accent hover:underline"
             >
-              Show more results
+              {t.showMore}
             </button>
           )}
         </div>

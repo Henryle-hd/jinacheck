@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="JinaCheck">
+  <!--
+    One stroke does two jobs: it leaves the lens where a magnifier's handle
+    would start, then turns up into a tick. Search plus verdict, in a mark that
+    still resolves at 16px because there is only one glyph, not two.
+  -->
+  <rect width="32" height="32" rx="7.5" fill="#0a6b5d"/>
+  <g fill="none" stroke="#ffffff" stroke-width="2.9" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12.8" cy="12.6" r="6.4"/>
+    <path d="M17.5 17.3 L20.9 22.6 L27.2 12.4"/>
+  </g>
+</svg>
