@@ -8,21 +8,11 @@ file. English and Swahili.
 ## What it does
 
 - Checks your name against both the company and business-name registers at once.
-- Ranks what it finds by how likely it is to block you, from 0 to 100.
+- Strong ranking algorithm, scoring every match 0 to 100 by how likely it is to block you.
 - Catches names that only sound alike, not just ones spelled alike.
 - Filters results by region, district, register, status, legal form and year.
 - Flags naming rules, with the law behind each one.
 - Gives every search a shareable link that reopens exactly as you left it.
-
-## Running it
-
-```bash
-npm install
-npm run dev
-```
-
-No API keys and no database; the register is queried live. Set
-`NEXT_PUBLIC_SITE_URL` for share previews (see `.env.example`).
 
 ## Limits
 
