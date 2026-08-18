@@ -12,8 +12,21 @@ interface Entry<T> {
   expires: number;
 }
 
-const store = new Map<string, Entry<unknown>>();
-const inflight = new Map<string, Promise<unknown>>();
+/**
+ * Held on globalThis, not in module scope.
+ *
+ * Next bundles route handlers and page rendering separately, so a plain
+ * module-level Map gives each its own copy: the search route would fill one
+ * cache while metadata generation read an empty one. Anchoring to the global
+ * gives every bundle the same store, and it survives HMR in development too.
+ */
+const globalCache = globalThis as typeof globalThis & {
+  __jinacheckStore?: Map<string, Entry<unknown>>;
+  __jinacheckInflight?: Map<string, Promise<unknown>>;
+};
+
+const store = (globalCache.__jinacheckStore ??= new Map<string, Entry<unknown>>());
+const inflight = (globalCache.__jinacheckInflight ??= new Map<string, Promise<unknown>>());
 
 const DEFAULT_TTL = 1000 * 60 * 30; // 30 minutes
 const MAX_ENTRIES = 300;

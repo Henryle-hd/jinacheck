@@ -19,6 +19,7 @@ import { NextResponse } from "next/server";
 import { probeMany } from "@/lib/brela";
 import { withCache } from "@/lib/cache";
 import { parseName, probeSet, probeTerms } from "@/lib/name";
+import { searchCacheKey } from "@/lib/search-key";
 import { checkName } from "@/lib/rules";
 import { buildProposal, buildVerdict, scoreEntity } from "@/lib/score";
 import type { Entity, ObjectType, ScoredEntity, SearchResponse, SearchScope } from "@/lib/types";
@@ -106,7 +107,7 @@ export async function POST(request: Request) {
   // covers both; narrowing is an explicit choice.
   const REGISTERS: ObjectType[] =
     scope === "all" ? ["ET-COMPANY", "ET-BUSINESS"] : [scope];
-  const cacheKey = `search:${scope}:${depthKey}:${terms.join("+")}:${isNumberLookup ? "num" : "name"}`;
+  const { key: cacheKey } = searchCacheKey({ name, number, scope, depth: depthKey });
 
   let pool: Entity[];
   let reports: SearchResponse["meta"]["probes"];

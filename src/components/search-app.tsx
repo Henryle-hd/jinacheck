@@ -160,6 +160,22 @@ export function SearchApp() {
     return () => observer.disconnect();
   }, [data, filters, sort]);
 
+  /**
+   * Keep the tab title in step with the search.
+   *
+   * The URL is rewritten with replaceState as you type, which does not re-run
+   * server metadata, so without this the tab would keep whatever title the page
+   * was first loaded with. Shared links still get their title from the server.
+   */
+  useEffect(() => {
+    const trimmed = name.trim();
+    document.title = !trimmed
+      ? t.titleDefault
+      : data
+        ? t.titleFound(trimmed, data.results.length)
+        : t.titlePlain(trimmed);
+  }, [name, data, t]);
+
   const filtered = useMemo(() => {
     if (!data) return [] as ScoredEntity[];
     const pool = applyFilters(data.results, filters);
