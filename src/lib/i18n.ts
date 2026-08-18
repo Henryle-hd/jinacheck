@@ -85,6 +85,9 @@ export interface Copy {
   sortOldest: string;
 
   // result row
+  titleDefault: string;
+  titleFound: (name: string, n: number) => string;
+  titlePlain: (name: string) => string;
   scoreLegend: string;
   scoreTitle: (n: number) => string;
   copy: string;
@@ -200,6 +203,9 @@ const en: Copy = {
   sortNewest: "Newest",
   sortOldest: "Oldest",
 
+  titleDefault: "JinaCheck | Check a business name against the BRELA register",
+  titleFound: (name, n) => `${name} | ${n} similar names at BRELA`,
+  titlePlain: (name) => `${name} | Is this name taken at BRELA?`,
   scoreLegend: "Score 0 to 100: how likely each name is to block yours.",
   scoreTitle: (n) => `Conflict risk ${n} out of 100`,
   copy: "Copy",
@@ -348,6 +354,9 @@ const sw: Copy = {
   sortNewest: "Mapya zaidi",
   sortOldest: "Ya zamani zaidi",
 
+  titleDefault: "JinaCheck | Angalia jina la biashara katika daftari la BRELA",
+  titleFound: (name, n) => `${name} | Majina ${n} yanayofanana BRELA`,
+  titlePlain: (name) => `${name} | Je, jina hili limechukuliwa BRELA?`,
   scoreLegend: "Alama 0 hadi 100: uwezekano wa jina hili kuzuia lako.",
   scoreTitle: (n) => `Hatari ya mgongano ${n} kati ya 100`,
   copy: "Nakili",

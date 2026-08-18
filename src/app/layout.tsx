@@ -23,7 +23,7 @@ const description =
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl()),
   title: {
-    default: `${SITE_NAME} — check a business name against the BRELA register`,
+    default: `${SITE_NAME} | Check a business name against the BRELA register`,
     template: `%s · ${SITE_NAME}`,
   },
   description,
@@ -44,7 +44,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     siteName: SITE_NAME,
-    title: `${SITE_NAME} — is your business name already taken?`,
+    title: `${SITE_NAME} | Is your business name already taken?`,
     description,
     url: "/",
     locale: "en_TZ",
@@ -52,7 +52,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: `${SITE_NAME} — is your business name already taken?`,
+    title: `${SITE_NAME} | Is your business name already taken?`,
     description,
   },
   category: "business",
