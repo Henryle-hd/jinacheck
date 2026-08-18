@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { searchAction } from "@/app/actions";
 import type { ScoredEntity, SearchResponse, SearchScope } from "@/lib/types";
 import {
   DEFAULT_STATE,
@@ -15,7 +16,7 @@ import { useCopy } from "./lang";
 import { ResultRow } from "./result-row";
 import { VerdictLine } from "./verdict";
 
-export function SearchApp() {
+export function SearchApp({ token }: { token: string }) {
   const { t } = useCopy();
   const [name, setName] = useState(DEFAULT_STATE.name);
   const [scope, setScope] = useState<SearchScope>(DEFAULT_STATE.scope);
@@ -30,7 +31,6 @@ export function SearchApp() {
   const [sort, setSort] = useState<Sort>(DEFAULT_STATE.sort);
   const [limit, setLimit] = useState(25);
 
-  const abortRef = useRef<AbortController | null>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const restoredRef = useRef(false);
   const hasResults = Boolean(data) || loading || Boolean(error);
@@ -62,10 +62,6 @@ export function SearchApp() {
       };
       if (!payload.name.trim()) return;
 
-      abortRef.current?.abort();
-      const controller = new AbortController();
-      abortRef.current = controller;
-
       setElapsed(0);
       setLoading(true);
       setError(null);
@@ -73,28 +69,21 @@ export function SearchApp() {
       setLimit(25);
 
       try {
-        const res = await fetch("/api/search", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-          signal: controller.signal,
-        });
-        const body = await res.json();
-        if (!res.ok) {
-          setError(body.error ?? t.searchFailed);
-          setData(null);
+        const result = await searchAction({ ...payload, token });
+        if (result.ok) {
+          setData(result.response);
         } else {
-          setData(body as SearchResponse);
+          setError(result.error);
+          setData(null);
         }
       } catch (err) {
-        if (err instanceof Error && err.name === "AbortError") return;
         setError(err instanceof Error ? err.message : t.searchFailed);
         setData(null);
       } finally {
         setLoading(false);
       }
     },
-    [name, scope, depth, t],
+    [name, scope, depth, t, token],
   );
 
   /**

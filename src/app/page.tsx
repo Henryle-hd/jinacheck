@@ -4,6 +4,7 @@ import { cacheGet } from "@/lib/cache";
 import { searchCacheKey, type DepthKey } from "@/lib/search-key";
 import type { Entity, SearchScope } from "@/lib/types";
 import { SearchApp } from "@/components/search-app";
+import { mintToken } from "@/lib/guard";
 import { LangProvider, LangToggle } from "@/components/lang";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Footer } from "@/components/footer";
@@ -21,7 +22,7 @@ export default function Home() {
       {/* flex column so the landing state can centre itself in the space left
           over above the footer */}
       <main className="flex flex-1 flex-col">
-        <SearchApp />
+        <SearchApp token={mintToken()} />
       </main>
 
       <Footer />

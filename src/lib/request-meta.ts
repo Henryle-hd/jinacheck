@@ -81,8 +81,7 @@ function classifyUserAgent(ua: string): Pick<RequestMeta, "deviceType" | "os" | 
  * and Netlify all publish a geo header), so no lookup service is called and the
  * visitor is never asked for permission.
  */
-export function readRequestMeta(request: Request): RequestMeta {
-  const h = request.headers;
+export function readRequestMeta(h: Headers): RequestMeta {
   const ua = h.get("user-agent") ?? "";
 
   const country =
