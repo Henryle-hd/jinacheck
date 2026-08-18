@@ -4,7 +4,7 @@ import { useState } from "react";
 
 import type { ScoredEntity } from "@/lib/types";
 import { useCopy } from "./lang";
-import { CopyButton, Dot } from "./ui";
+import { CopyMenu, Dot } from "./ui";
 
 function formatDate(value: string | null): string | null {
   if (!value) return null;
@@ -57,6 +57,22 @@ export function ResultRow({ entity, terms }: { entity: ScoredEntity; terms: stri
     closed ? t.closedNote : null,
     entity.hasCharges ? t.chargesNote : null,
   ].filter(Boolean);
+
+  /** The whole record as pasteable text, labelled in the current language. */
+  const detailText = [
+    entity.name,
+    `${t.register}: ${entity.objectType === "ET-COMPANY" ? t.company : t.businessName}`,
+    `${t.status}: ${entity.status ?? "—"}`,
+    entity.subtype ? `${t.legalForm}: ${entity.subtype}` : null,
+    entity.regDate ? `${t.registeredOn}: ${formatDate(entity.regDate)}` : null,
+    entity.certNumber ? `${t.certificateNo}: ${entity.certNumber}` : null,
+    entity.trackingNo ? `${t.trackingNo}: ${entity.trackingNo}` : null,
+    entity.cessDate ? `${t.ceased}: ${formatDate(entity.cessDate)}` : null,
+    entity.hasCharges ? `${t.charges}: ${t.chargesRegistered}` : null,
+    entity.address ? `${t.address}: ${entity.address}` : null,
+  ]
+    .filter(Boolean)
+    .join("\n");
 
   return (
     <li className="group py-3.5">
@@ -121,7 +137,14 @@ export function ResultRow({ entity, terms }: { entity: ScoredEntity; terms: stri
         {/* Sibling of the row toggle, not a child: a button cannot nest inside
             another button. */}
         <span className="mt-0.5 shrink-0">
-          <CopyButton value={entity.name} label={t.copyName} />
+          <CopyMenu
+            label={t.copy}
+            doneLabel={t.copied}
+            options={[
+              { label: t.copyName, value: entity.name },
+              { label: t.copyAll, value: detailText },
+            ]}
+          />
         </span>
       </div>
     </li>

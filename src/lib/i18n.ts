@@ -85,7 +85,9 @@ export interface Copy {
   sortOldest: string;
 
   // result row
+  copy: string;
   copyName: string;
+  copyAll: string;
   copied: string;
   couldNotCopy: string;
   matchType: string;
@@ -195,7 +197,9 @@ const en: Copy = {
   sortNewest: "Newest",
   sortOldest: "Oldest",
 
-  copyName: "Copy name",
+  copy: "Copy",
+  copyName: "Name only",
+  copyAll: "All details",
   copied: "Copied",
   couldNotCopy: "Could not copy",
   matchType: "Match type",
@@ -339,7 +343,9 @@ const sw: Copy = {
   sortNewest: "Mapya zaidi",
   sortOldest: "Ya zamani zaidi",
 
-  copyName: "Nakili jina",
+  copy: "Nakili",
+  copyName: "Jina pekee",
+  copyAll: "Maelezo yote",
   copied: "Limenakiliwa",
   couldNotCopy: "Imeshindikana kunakili",
   matchType: "Aina ya ulinganifu",
