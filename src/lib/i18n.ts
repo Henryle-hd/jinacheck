@@ -37,6 +37,7 @@ export interface Copy {
   depthDeep: string;
   themeToggle: string;
   sourceOnGitHub: string;
+  star: string;
 
   // states
   searchingRegister: string;
@@ -45,7 +46,7 @@ export interface Copy {
   tryAgain: string;
   noResemble: string;
   noFilterMatch: string;
-  showMore: string;
+  showingCount: (shown: number, total: number) => string;
 
   // verdict
   why: string;
@@ -57,7 +58,6 @@ export interface Copy {
   onlyCompanyRegister: string;
   onlyBusinessRegister: string;
   entriesExamined: string;
-  cached: string;
   heldMore: string;
 
   // filters
@@ -85,6 +85,8 @@ export interface Copy {
   sortOldest: string;
 
   // result row
+  scoreLegend: string;
+  scoreTitle: (n: number) => string;
   copy: string;
   copyName: string;
   copyAll: string;
@@ -150,7 +152,9 @@ const en: Copy = {
   depthStandard: "Standard",
   depthDeep: "Deep",
   themeToggle: "Switch between light and dark",
-  sourceOnGitHub: "Source on GitHub",
+  sourceOnGitHub: "Star this project on GitHub",
+  // "Star" is GitHub's own term and is not translated in its Swahili-facing UI.
+  star: "Star",
 
   searchingRegister: "Searching the register…",
   slowNote: "BRELA can take 15 to 30 seconds on common words. Filtering afterwards is instant.",
@@ -158,7 +162,7 @@ const en: Copy = {
   tryAgain: "Try again",
   noResemble: "No entry on the register resembles this name.",
   noFilterMatch: "Nothing matches these filters.",
-  showMore: "Show more results",
+  showingCount: (shown, total) => `Showing ${shown} of ${total}`,
 
   why: "Why",
   hideDetail: "Hide detail",
@@ -171,7 +175,6 @@ const en: Copy = {
   onlyBusinessRegister:
     "Only the business-name register was searched. Switch to All to include companies, which can conflict too.",
   entriesExamined: "entries examined",
-  cached: "(cached)",
   heldMore: "the register held more, so try a deeper search",
 
   results: (n) => `${n.toLocaleString()} result${n === 1 ? "" : "s"}`,
@@ -197,6 +200,8 @@ const en: Copy = {
   sortNewest: "Newest",
   sortOldest: "Oldest",
 
+  scoreLegend: "Score 0 to 100: how likely each name is to block yours.",
+  scoreTitle: (n) => `Conflict risk ${n} out of 100`,
   copy: "Copy",
   copyName: "Name only",
   copyAll: "All details",
@@ -295,7 +300,8 @@ const sw: Copy = {
   depthStandard: "Kawaida",
   depthDeep: "Kwa kina",
   themeToggle: "Badilisha mwanga na giza",
-  sourceOnGitHub: "Msimbo GitHub",
+  sourceOnGitHub: "Ipe nyota mradi huu GitHub",
+  star: "Star",
 
   searchingRegister: "Inatafuta katika daftari…",
   slowNote:
@@ -304,7 +310,7 @@ const sw: Copy = {
   tryAgain: "Jaribu tena",
   noResemble: "Hakuna jina katika daftari linalofanana na hili.",
   noFilterMatch: "Hakuna kinacholingana na vichujio hivi.",
-  showMore: "Onyesha matokeo zaidi",
+  showingCount: (shown, total) => `Inaonyesha ${shown} kati ya ${total}`,
 
   why: "Kwa nini",
   hideDetail: "Ficha maelezo",
@@ -317,7 +323,6 @@ const sw: Copy = {
   onlyBusinessRegister:
     "Ni daftari la majina ya biashara pekee lililotafutwa. Chagua Zote ili kujumuisha makampuni, ambayo pia yanaweza kugongana.",
   entriesExamined: "majina yamechunguzwa",
-  cached: "(yamehifadhiwa)",
   heldMore: "daftari lilikuwa na mengi zaidi, jaribu utafutaji wa kina",
 
   results: (n) => `Matokeo ${n.toLocaleString()}`,
@@ -343,6 +348,8 @@ const sw: Copy = {
   sortNewest: "Mapya zaidi",
   sortOldest: "Ya zamani zaidi",
 
+  scoreLegend: "Alama 0 hadi 100: uwezekano wa jina hili kuzuia lako.",
+  scoreTitle: (n) => `Hatari ya mgongano ${n} kati ya 100`,
   copy: "Nakili",
   copyName: "Jina pekee",
   copyAll: "Maelezo yote",

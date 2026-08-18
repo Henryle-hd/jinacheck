@@ -4,7 +4,7 @@ import { useState } from "react";
 
 import type { ScoredEntity } from "@/lib/types";
 import { useCopy } from "./lang";
-import { CopyMenu, Dot } from "./ui";
+import { CopyMenu, Score } from "./ui";
 
 function formatDate(value: string | null): string | null {
   if (!value) return null;
@@ -77,9 +77,9 @@ export function ResultRow({ entity, terms }: { entity: ScoredEntity; terms: stri
   return (
     <li className="group py-3.5">
       <div className="flex items-start gap-2.5">
-        {/* aligned to the cap height of the name, not the row box */}
-        <span className="mt-[7px]">
-          <Dot band={entity.band} />
+        {/* leads the row: the number is the verdict for this entry */}
+        <span className="mt-[3px]">
+          <Score score={entity.score} band={entity.band} title={t.scoreTitle(entity.score)} />
         </span>
 
         <div className="min-w-0 flex-1">
@@ -100,7 +100,6 @@ export function ResultRow({ entity, terms }: { entity: ScoredEntity; terms: stri
             </h3>
 
             <p className="mt-0.5 text-[13px] leading-relaxed text-muted">
-              <span className="tnum text-faint">{entity.score}</span>{" "}
               {/* Rendered from the match kind rather than the server's English
                   sentence, so the row reads in the chosen language. */}
               {t.reasons[entity.kind] ?? entity.reasons[0]}

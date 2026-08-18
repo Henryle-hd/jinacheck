@@ -4,7 +4,7 @@ import { useState } from "react";
 
 import type { SearchResponse } from "@/lib/types";
 import { useCopy } from "./lang";
-import { BAND_META, Dot } from "./ui";
+import { BAND_META } from "./ui";
 
 /**
  * The answer, in one line.
@@ -44,10 +44,7 @@ export function VerdictLine({ data }: { data: SearchResponse }) {
   return (
     <section className="border-b border-line pb-3">
       <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-        <span className="flex items-center gap-2">
-          <Dot band={verdict.band} />
-          <span className={`text-[14px] font-semibold ${band.fg}`}>{headline}</span>
-        </span>
+        <span className={`text-[14px] font-semibold ${band.fg}`}>{headline}</span>
         <span className="text-[14px] text-ink-soft">
           {summary}
           {flags.length > 0 && verdict.band !== "critical" ? ` ${t.summaryRuleNote}` : ""}
@@ -122,8 +119,10 @@ export function VerdictLine({ data }: { data: SearchResponse }) {
               : query.scope === "ET-COMPANY"
                 ? t.onlyCompanyRegister
                 : t.onlyBusinessRegister}{" "}
+            {/* How many entries were weighed says something about how much a
+                clear result is worth. Whether our cache served them does not,
+                so it is not shown. */}
             {data.meta.pool.toLocaleString()} {t.entriesExamined}
-            {data.meta.cached ? ` ${t.cached}` : ` in ${(data.meta.ms / 1000).toFixed(1)}s`}
             {data.meta.truncated && `; ${t.heldMore}`}.
           </p>
         </div>
