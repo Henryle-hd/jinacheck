@@ -37,6 +37,7 @@ export interface Copy {
   depthDeep: string;
   themeToggle: string;
   sourceOnGitHub: string;
+  star: string;
 
   // states
   searchingRegister: string;
@@ -152,7 +153,9 @@ const en: Copy = {
   depthStandard: "Standard",
   depthDeep: "Deep",
   themeToggle: "Switch between light and dark",
-  sourceOnGitHub: "Source on GitHub",
+  sourceOnGitHub: "Star this project on GitHub",
+  // "Star" is GitHub's own term and is not translated in its Swahili-facing UI.
+  star: "Star",
 
   searchingRegister: "Searching the register…",
   slowNote: "BRELA can take 15 to 30 seconds on common words. Filtering afterwards is instant.",
@@ -299,7 +302,8 @@ const sw: Copy = {
   depthStandard: "Kawaida",
   depthDeep: "Kwa kina",
   themeToggle: "Badilisha mwanga na giza",
-  sourceOnGitHub: "Msimbo GitHub",
+  sourceOnGitHub: "Ipe nyota mradi huu GitHub",
+  star: "Star",
 
   searchingRegister: "Inatafuta katika daftari…",
   slowNote:
