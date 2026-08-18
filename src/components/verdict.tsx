@@ -4,7 +4,7 @@ import { useState } from "react";
 
 import type { SearchResponse } from "@/lib/types";
 import { useCopy } from "./lang";
-import { BAND_META, Dot } from "./ui";
+import { BAND_META } from "./ui";
 
 /**
  * The answer, in one line.
@@ -44,10 +44,7 @@ export function VerdictLine({ data }: { data: SearchResponse }) {
   return (
     <section className="border-b border-line pb-3">
       <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-        <span className="flex items-center gap-2">
-          <Dot band={verdict.band} />
-          <span className={`text-[14px] font-semibold ${band.fg}`}>{headline}</span>
-        </span>
+        <span className={`text-[14px] font-semibold ${band.fg}`}>{headline}</span>
         <span className="text-[14px] text-ink-soft">
           {summary}
           {flags.length > 0 && verdict.band !== "critical" ? ` ${t.summaryRuleNote}` : ""}

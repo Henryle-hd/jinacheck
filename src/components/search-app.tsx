@@ -337,11 +337,17 @@ export function SearchApp() {
                 : t.noFilterMatch}
             </p>
           ) : (
-            <ul className="mt-1 divide-y divide-line">
-              {filtered.slice(0, limit).map((r) => (
-                <ResultRow key={r.uid} entity={r} terms={data.query.tokens} />
-              ))}
-            </ul>
+            <>
+              {/* Explains the number leading each row, once, rather than
+                  repeating a label down the whole list. */}
+              <p className="mt-3 text-[11px] text-faint">{t.scoreLegend}</p>
+
+              <ul className="mt-1 divide-y divide-line">
+                {filtered.slice(0, limit).map((r) => (
+                  <ResultRow key={r.uid} entity={r} terms={data.query.tokens} />
+                ))}
+              </ul>
+            </>
           )}
 
           {filtered.length > limit && (

@@ -10,13 +10,13 @@ export const REGISTER_LABEL: Record<ObjectType, string> = {
   "ET-BUSINESS": "Business name",
 };
 
-/** Per-band colour. The wording lives in the copy table so it can be translated. */
-export const BAND_META: Record<RiskBand, { fg: string; dot: string }> = {
-  critical: { fg: "text-critical", dot: "bg-critical" },
-  high: { fg: "text-high", dot: "bg-high" },
-  medium: { fg: "text-medium", dot: "bg-medium" },
-  low: { fg: "text-low", dot: "bg-low" },
-  clear: { fg: "text-clear", dot: "bg-clear" },
+/** Per-band text colour. The wording lives in the copy table, for translation. */
+export const BAND_META: Record<RiskBand, { fg: string }> = {
+  critical: { fg: "text-critical" },
+  high: { fg: "text-high" },
+  medium: { fg: "text-medium" },
+  low: { fg: "text-low" },
+  clear: { fg: "text-clear" },
 };
 
 /**
@@ -167,13 +167,29 @@ export function CopyMenu({
   );
 }
 
-/** Small status dot. Carries the risk colour without shouting. */
-export function Dot({ band }: { band: RiskBand }) {
+/**
+ * The conflict score, doing the job the coloured dot used to.
+ *
+ * Set in a fixed-width column so the names beside it stay in a straight line
+ * whether the score is 7 or 100, and in tabular figures so the digits do not
+ * shift about between rows.
+ */
+export function Score({
+  score,
+  band,
+  title,
+}: {
+  score: number;
+  band: RiskBand;
+  title?: string;
+}) {
   return (
     <span
-      className={`inline-block size-1.5 shrink-0 rounded-full ${BAND_META[band].dot}`}
-      aria-hidden
-    />
+      title={title}
+      className={`tnum w-9 shrink-0 text-right text-[19px] leading-none font-semibold tracking-tight ${BAND_META[band].fg}`}
+    >
+      {score}
+    </span>
   );
 }
 

@@ -85,6 +85,8 @@ export interface Copy {
   sortOldest: string;
 
   // result row
+  scoreLegend: string;
+  scoreTitle: (n: number) => string;
   copy: string;
   copyName: string;
   copyAll: string;
@@ -197,6 +199,8 @@ const en: Copy = {
   sortNewest: "Newest",
   sortOldest: "Oldest",
 
+  scoreLegend: "Score 0 to 100: how likely each name is to block yours.",
+  scoreTitle: (n) => `Conflict risk ${n} out of 100`,
   copy: "Copy",
   copyName: "Name only",
   copyAll: "All details",
@@ -343,6 +347,8 @@ const sw: Copy = {
   sortNewest: "Mapya zaidi",
   sortOldest: "Ya zamani zaidi",
 
+  scoreLegend: "Alama 0 hadi 100: uwezekano wa jina hili kuzuia lako.",
+  scoreTitle: (n) => `Hatari ya mgongano ${n} kati ya 100`,
   copy: "Nakili",
   copyName: "Jina pekee",
   copyAll: "Maelezo yote",
