@@ -95,6 +95,15 @@ async function ensureSchema(): Promise<void> {
     `;
     await sql`CREATE INDEX IF NOT EXISTS searches_created_idx ON searches (created_at DESC)`;
     await sql`CREATE INDEX IF NOT EXISTS searches_core_idx ON searches (query_core)`;
+
+    // How many entries each search was the first to turn up. This is the
+    // corpus-growth signal: when it trends to zero for a term, our copy of that
+    // slice of the register is complete.
+    //
+    // Deliberately not stored per entity. Which query surfaced a row first is a
+    // fact about who searched what and in which order, not about the register,
+    // and nothing reads it.
+    await sql`ALTER TABLE searches ADD COLUMN IF NOT EXISTS new_entities int`;
   })();
 
   return globalDb.__jinacheckSchema;
@@ -137,11 +146,14 @@ async function attempt(fn: () => Promise<void>, label: string): Promise<void> {
  * The guard is on real fields rather than DO NOTHING because a company can
  * close or move: those changes still need to land, and only those do.
  */
-export async function upsertEntities(entities: Entity[], cores: Map<string, string>): Promise<number> {
+export async function upsertEntities(
+  entities: Entity[],
+  cores: Map<string, string>,
+): Promise<number> {
   if (!sql || !entities.length) return 0;
   await ensureSchema();
 
-  let written = 0;
+  let inserted = 0;
   for (let i = 0; i < entities.length; i += CHUNK) {
     const chunk = entities.slice(i, i + CHUNK);
     await attempt(async () => {
@@ -172,7 +184,7 @@ export async function upsertEntities(entities: Entity[], cores: Map<string, stri
       e.year,
     ]);
 
-    await sql`
+    const returned = (await sql`
       INSERT INTO register_entities (
         uid, entity_id, object_type, legal_name, distinctive_core, subtype_name,
         company_subtype, cert_number, tracking_no, reg_date, incorporation_date,
@@ -223,11 +235,12 @@ export async function upsertEntities(entities: Entity[], cores: Map<string, stri
         OR register_entities.address      IS DISTINCT FROM EXCLUDED.address
         OR register_entities.cess_date    IS DISTINCT FROM EXCLUDED.cess_date
         OR register_entities.has_charges  IS DISTINCT FROM EXCLUDED.has_charges
-    `;
+      RETURNING (xmax = 0) AS is_new
+    `) as Array<{ is_new: boolean }>;
+      inserted += returned.filter((r) => r.is_new).length;
     }, `upsert chunk ${i / CHUNK}`);
-    written += chunk.length;
   }
-  return written;
+  return inserted;
 }
 
 export interface SearchLog {
@@ -248,12 +261,13 @@ export interface SearchLog {
 }
 
 /** Record one search event. */
-export async function recordSearch(log: SearchLog): Promise<void> {
-  if (!sql) return;
+export async function recordSearch(log: SearchLog): Promise<number | null> {
+  if (!sql) return null;
   await ensureSchema();
 
+  let id: number | null = null;
   await attempt(async () => {
-    await sql`
+    const rows = (await sql`
     INSERT INTO searches (
       query_name, query_core, terms, scope, depth, result_count, top_score,
       verdict_band, flag_ids, duration_ms, from_cache, truncated, lang,
@@ -265,8 +279,19 @@ export async function recordSearch(log: SearchLog): Promise<void> {
       ${log.meta.country}, ${log.meta.region}, ${log.meta.deviceType},
       ${log.meta.os}, ${log.meta.browser}, ${log.meta.visitorHash}
     )
-    `;
+    RETURNING id
+    `) as Array<{ id: number }>;
+    id = rows[0]?.id ?? null;
   }, "record search");
+  return id;
+}
+
+/** Note how many entries this search was the first to turn up. */
+export async function setSearchContribution(searchId: number, added: number): Promise<void> {
+  if (!sql) return;
+  await attempt(async () => {
+    await sql`UPDATE searches SET new_entities = ${added} WHERE id = ${searchId}`;
+  }, "search contribution");
 }
 
 /** How much of the register we have mirrored so far. */

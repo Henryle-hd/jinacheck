@@ -17,7 +17,7 @@
 import { after, NextResponse } from "next/server";
 
 import { probeMany } from "@/lib/brela";
-import { dbEnabled, recordSearch, upsertEntities } from "@/lib/db";
+import { dbEnabled, recordSearch, setSearchContribution, upsertEntities } from "@/lib/db";
 import { readRequestMeta } from "@/lib/request-meta";
 import { withCache } from "@/lib/cache";
 import { parseName, probeSet, probeTerms } from "@/lib/name";
@@ -239,10 +239,9 @@ export async function POST(request: Request) {
 
     after(async () => {
       try {
-        // Reuse the cores already computed while scoring rather than parsing again.
-        const cores = new Map(results.map((r) => [r.uid, r.core]));
-        await upsertEntities(results, cores);
-        await recordSearch({
+        // The search row goes first so its id is available to record how many
+        // entries this search was the first to find.
+        const searchId = await recordSearch({
           queryName: name,
           queryCore: parts.core,
           terms,
@@ -258,6 +257,11 @@ export async function POST(request: Request) {
           lang,
           meta,
         });
+
+        // Reuse the cores already computed while scoring rather than parsing again.
+        const cores = new Map(results.map((r) => [r.uid, r.core]));
+        const added = await upsertEntities(results, cores);
+        if (searchId !== null) await setSearchContribution(searchId, added);
       } catch (err) {
         // Never surfaced: the search already succeeded and the answer is gone.
         // Whatever failed to land here gets another chance the next time anyone

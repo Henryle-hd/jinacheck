@@ -29,3 +29,8 @@ determination, and checking a name does not reserve it. The Registrar decides.
 - [BRELA public search](https://ors.brela.go.tz/orsreg/searchbusinesspublic)
 
 [act]: https://media.tanzlii.org/media/legislation/316257/source_file/e3f3cc9686195347/1930-1.pdf
+
+## Disclaimer
+
+It does not replace BRELA's official search. JinaCheck applies helpful functions
+to public data.
