@@ -8,6 +8,14 @@
 
 export type ObjectType = "ET-COMPANY" | "ET-BUSINESS";
 
+/**
+ * Which register(s) to search. Defaults to "all" so nothing is hidden by an
+ * assumption about what the user intends to file: a name already trading in
+ * either register is a real obstacle. Narrowing to one register also applies
+ * that register's naming rules.
+ */
+export type SearchScope = "all" | ObjectType;
+
 export type RegStatus = "Registered" | "Closed" | string;
 
 /** Raw upstream response (success case). */
@@ -93,7 +101,8 @@ export interface NameFlag {
   severity: "blocker" | "warning" | "info";
   title: string;
   detail: string;
-  /** Statutory or procedural hook, e.g. "Companies Act, Cap. 212 s.14(1)". */
+  /** The Act a rule derives from, e.g. "Companies Act (Cap. 212)". A pointer
+   *  for the reader to go and check, not a verified pinpoint citation. */
   authority?: string;
 }
 
@@ -110,12 +119,8 @@ export interface Verdict {
 export interface SearchRequest {
   /** The name the user is thinking of registering. */
   name: string;
-  /**
-   * What the user intends to register. This drives the naming-rule checks only —
-   * the search itself always covers both registers, because a company name and
-   * a business name conflict with each other in practice.
-   */
-  objectType: ObjectType;
+  /** Which register(s) to search, and whose naming rules to apply. */
+  scope: SearchScope;
   /** Registration/certificate number lookup (optional, exact-ish). */
   number?: string;
   /** How many candidate records to pull from upstream. */
@@ -137,7 +142,7 @@ export interface ProbeReport {
 export interface SearchResponse {
   query: {
     name: string;
-    objectType: ObjectType;
+    scope: SearchScope;
     number?: string;
     /** The distinctive core we derived and actually searched on. */
     core: string;

@@ -25,3 +25,5 @@ PageSize:10
 bn_name:"henry"
 bn_number:"653"
 object_type:"ET-BUSINESS"
+
+the org: https://ors.brela.go.tz/orsreg/searchbusinesspublic

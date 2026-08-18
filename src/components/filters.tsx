@@ -4,7 +4,8 @@ import { useMemo } from "react";
 
 import type { MatchKind, ObjectType, SearchResponse } from "@/lib/types";
 import type { Sort } from "@/lib/url-state";
-import { KIND_LABEL, Popover, REGISTER_LABEL } from "./ui";
+import { useCopy } from "./lang";
+import { Popover, REGISTER_LABEL } from "./ui";
 
 export interface FilterState {
   text: string;
@@ -63,8 +64,9 @@ function CheckList({
   onToggle: (value: string) => void;
   labelFor?: (value: string) => string;
 }) {
+  const { t } = useCopy();
   if (!options.length) {
-    return <p className="px-2 py-1.5 text-[12px] text-faint">Nothing to filter</p>;
+    return <p className="px-2 py-1.5 text-[12px] text-faint">{t.nothingToFilter}</p>;
   }
   return (
     <ul>
@@ -108,6 +110,7 @@ export function FilterBar({
   sort: Sort;
   onSortChange: (sort: Sort) => void;
 }) {
+  const { t } = useCopy();
   const set = (patch: Partial<FilterState>) => onChange({ ...filters, ...patch });
   const active = countActive(filters);
 
@@ -139,20 +142,20 @@ export function FilterBar({
       {/* Spell out that both registers are covered. Otherwise switching the
           Company / Business name toggle looks like it does nothing. */}
       <span className="tnum mr-1 text-muted">
-        {visibleCount.toLocaleString()} result{visibleCount === 1 ? "" : "s"}
+        {t.results(visibleCount)}
         <span className="text-faint">
           {data.facets.registers.length > 1
-            ? " in both registers"
+            ? ` ${t.inBothRegisters}`
             : data.facets.registers.length === 1
-              ? ` in the ${REGISTER_LABEL[data.facets.registers[0].value].toLowerCase()} register`
+              ? ` ${data.facets.registers[0].value === "ET-COMPANY" ? t.inCompanyRegister : t.inBusinessRegister}`
               : ""}
         </span>
       </span>
 
-      <Popover label="Location" active={filters.regions.length + filters.districts.length}>
+      <Popover label={t.location} active={filters.regions.length + filters.districts.length}>
         <div className="space-y-2">
           <div>
-            <p className="px-2 pb-1 text-[11px] tracking-wide text-faint uppercase">Region</p>
+            <p className="px-2 pb-1 text-[11px] tracking-wide text-faint uppercase">{t.region}</p>
             <CheckList
               options={data.facets.regions}
               selected={filters.regions}
@@ -161,7 +164,7 @@ export function FilterBar({
           </div>
           {districts.length > 0 && (
             <div className="border-t border-line pt-2">
-              <p className="px-2 pb-1 text-[11px] tracking-wide text-faint uppercase">District</p>
+              <p className="px-2 pb-1 text-[11px] tracking-wide text-faint uppercase">{t.district}</p>
               <CheckList
                 options={districts}
                 selected={filters.districts}
@@ -172,17 +175,17 @@ export function FilterBar({
         </div>
       </Popover>
 
-      <Popover label="Match" active={filters.kinds.length + (filters.minScore > 0 ? 1 : 0)}>
+      <Popover label={t.match} active={filters.kinds.length + (filters.minScore > 0 ? 1 : 0)}>
         <div className="space-y-2">
           <CheckList
             options={kinds.map((k) => ({ value: k.value, count: k.count }))}
             selected={filters.kinds}
             onToggle={(v) => set({ kinds: toggle(filters.kinds, v as MatchKind) })}
-            labelFor={(v) => KIND_LABEL[v as MatchKind]}
+            labelFor={(v) => t.kinds[v]}
           />
           <div className="border-t border-line px-2 pt-2">
             <div className="flex items-center justify-between">
-              <span className="text-[12px] text-muted">Minimum risk</span>
+              <span className="text-[12px] text-muted">{t.minimumRisk}</span>
               <span className="tnum text-[12px] font-semibold text-ink">{filters.minScore}</span>
             </div>
             <input
@@ -198,10 +201,10 @@ export function FilterBar({
         </div>
       </Popover>
 
-      {/* Both registers are always searched, so being able to separate them
-          matters — a business name and a company are different obstacles. */}
+      {/* Only shown when the search covered both registers. A business name and
+          a company are different obstacles, so separating them is worth a filter. */}
       {data.facets.registers.length > 1 && (
-        <Popover label="Register" active={filters.registers.length}>
+        <Popover label={t.register} active={filters.registers.length}>
           <CheckList
             options={data.facets.registers.map((r) => ({ value: r.value, count: r.count }))}
             selected={filters.registers}
@@ -212,7 +215,7 @@ export function FilterBar({
       )}
 
       <Popover
-        label="Status"
+        label={t.status}
         active={filters.statuses.length + filters.subtypes.length}
       >
         <div className="space-y-2">
@@ -224,7 +227,7 @@ export function FilterBar({
           {data.facets.subtypes.length > 1 && (
             <div className="border-t border-line pt-2">
               <p className="px-2 pb-1 text-[11px] tracking-wide text-faint uppercase">
-                Legal form
+                {t.legalForm}
               </p>
               <CheckList
                 options={data.facets.subtypes}
@@ -236,21 +239,21 @@ export function FilterBar({
         </div>
       </Popover>
 
-      <Popover label="Year" active={(filters.yearFrom ? 1 : 0) + (filters.yearTo ? 1 : 0)}>
+      <Popover label={t.year} active={(filters.yearFrom ? 1 : 0) + (filters.yearTo ? 1 : 0)}>
         <div className="flex items-center gap-2 p-1">
           <input
             type="number"
             inputMode="numeric"
-            placeholder="from"
+            placeholder={t.from}
             value={filters.yearFrom ?? ""}
             onChange={(e) => set({ yearFrom: e.target.value ? Number(e.target.value) : null })}
             className="tnum w-full rounded border border-line bg-canvas px-2 py-1 text-[13px] text-ink placeholder:text-faint focus:border-accent focus:outline-none"
           />
-          <span className="text-[12px] text-faint">to</span>
+          <span className="text-[12px] text-faint">{t.to}</span>
           <input
             type="number"
             inputMode="numeric"
-            placeholder="to"
+            placeholder={t.to}
             value={filters.yearTo ?? ""}
             onChange={(e) => set({ yearTo: e.target.value ? Number(e.target.value) : null })}
             className="tnum w-full rounded border border-line bg-canvas px-2 py-1 text-[13px] text-ink placeholder:text-faint focus:border-accent focus:outline-none"
@@ -262,26 +265,26 @@ export function FilterBar({
         <input
           value={filters.text}
           onChange={(e) => set({ text: e.target.value })}
-          placeholder="Find in results"
+          placeholder={t.findInResults}
           className="w-36 rounded-full border border-line bg-surface px-3 py-1.5 text-[13px] text-ink placeholder:text-faint focus:w-48 focus:border-accent focus:outline-none sm:w-44"
         />
         <select
           value={sort}
           onChange={(e) => onSortChange(e.target.value as Sort)}
           className="rounded-full border border-line bg-surface px-2.5 py-1.5 text-[13px] text-ink-soft focus:border-accent focus:outline-none"
-          aria-label="Sort results"
+          aria-label={t.sortAria}
         >
-          <option value="relevance">Closest first</option>
-          <option value="name">Name A-Z</option>
-          <option value="newest">Newest</option>
-          <option value="oldest">Oldest</option>
+          <option value="relevance">{t.sortRelevance}</option>
+          <option value="name">{t.sortName}</option>
+          <option value="newest">{t.sortNewest}</option>
+          <option value="oldest">{t.sortOldest}</option>
         </select>
         {active > 0 && (
           <button
             onClick={() => onChange(EMPTY_FILTERS)}
             className="text-[13px] text-accent hover:underline"
           >
-            Clear
+            {t.clear}
           </button>
         )}
       </div>

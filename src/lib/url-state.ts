@@ -9,14 +9,14 @@
 
 import type { FilterState } from "@/components/filters";
 import { EMPTY_FILTERS } from "@/components/filters";
-import type { MatchKind, ObjectType } from "./types";
+import type { MatchKind, ObjectType, SearchScope } from "./types";
 
 export type Depth = "quick" | "standard" | "deep";
 export type Sort = "relevance" | "name" | "newest" | "oldest";
 
 export interface AppState {
   name: string;
-  objectType: ObjectType;
+  scope: SearchScope;
   depth: Depth;
   sort: Sort;
   filters: FilterState;
@@ -24,7 +24,8 @@ export interface AppState {
 
 export const DEFAULT_STATE: AppState = {
   name: "",
-  objectType: "ET-COMPANY",
+  // Both registers by default, so a conflict in the other one is never hidden.
+  scope: "all",
   depth: "standard",
   sort: "relevance",
   filters: EMPTY_FILTERS,
@@ -50,6 +51,11 @@ const REGISTER_TO_PARAM: Record<ObjectType, string> = {
 const PARAM_TO_REGISTER: Record<string, ObjectType> = {
   company: "ET-COMPANY",
   business: "ET-BUSINESS",
+};
+const SCOPE_TO_PARAM: Record<SearchScope, string> = {
+  all: "all",
+  "ET-COMPANY": "company",
+  "ET-BUSINESS": "business",
 };
 
 function splitList(raw: string | null): string[] {
@@ -77,7 +83,7 @@ export function readAppState(search: string): AppState {
 
   return {
     name: p.get("q") ?? "",
-    objectType: (as && PARAM_TO_REGISTER[as]) || DEFAULT_STATE.objectType,
+    scope: as === "all" ? "all" : (as && PARAM_TO_REGISTER[as]) || DEFAULT_STATE.scope,
     depth: depth && DEPTHS.includes(depth) ? depth : DEFAULT_STATE.depth,
     sort: sort && SORTS.includes(sort) ? sort : DEFAULT_STATE.sort,
     filters: {
@@ -105,7 +111,7 @@ export function writeAppState(s: AppState): string {
   const { filters: f } = s;
 
   if (s.name.trim()) p.set("q", s.name.trim());
-  if (s.objectType !== DEFAULT_STATE.objectType) p.set("as", REGISTER_TO_PARAM[s.objectType]);
+  if (s.scope !== DEFAULT_STATE.scope) p.set("as", SCOPE_TO_PARAM[s.scope]);
   if (s.depth !== DEFAULT_STATE.depth) p.set("depth", s.depth);
   if (s.sort !== DEFAULT_STATE.sort) p.set("sort", s.sort);
 

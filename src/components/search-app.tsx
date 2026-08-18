@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import type { ObjectType, ScoredEntity, SearchResponse } from "@/lib/types";
+import type { ScoredEntity, SearchResponse, SearchScope } from "@/lib/types";
 import {
   DEFAULT_STATE,
   readAppState,
@@ -11,12 +11,14 @@ import {
   type Sort,
 } from "@/lib/url-state";
 import { applyFilters, EMPTY_FILTERS, FilterBar, type FilterState } from "./filters";
+import { useCopy } from "./lang";
 import { ResultRow } from "./result-row";
 import { VerdictLine } from "./verdict";
 
 export function SearchApp() {
+  const { t } = useCopy();
   const [name, setName] = useState(DEFAULT_STATE.name);
-  const [objectType, setObjectType] = useState<ObjectType>(DEFAULT_STATE.objectType);
+  const [scope, setScope] = useState<SearchScope>(DEFAULT_STATE.scope);
   const [depth, setDepth] = useState<Depth>(DEFAULT_STATE.depth);
 
   const [data, setData] = useState<SearchResponse | null>(null);
@@ -47,14 +49,14 @@ export function SearchApp() {
      */
     async (overrides?: {
       name?: string;
-      objectType?: ObjectType;
+      scope?: SearchScope;
       depth?: Depth;
       /** Set when restoring a shared link, whose filters must survive the run. */
       keepFilters?: boolean;
     }) => {
       const payload = {
         name: overrides?.name ?? name,
-        objectType: overrides?.objectType ?? objectType,
+        scope: overrides?.scope ?? scope,
         depth: overrides?.depth ?? depth,
       };
       if (!payload.name.trim()) return;
@@ -78,20 +80,20 @@ export function SearchApp() {
         });
         const body = await res.json();
         if (!res.ok) {
-          setError(body.error ?? "The search failed. Try again.");
+          setError(body.error ?? t.searchFailed);
           setData(null);
         } else {
           setData(body as SearchResponse);
         }
       } catch (err) {
         if (err instanceof Error && err.name === "AbortError") return;
-        setError(err instanceof Error ? err.message : "Could not reach the search service.");
+        setError(err instanceof Error ? err.message : t.searchFailed);
         setData(null);
       } finally {
         setLoading(false);
       }
     },
-    [name, objectType, depth],
+    [name, scope, depth, t],
   );
 
   /**
@@ -110,13 +112,13 @@ export function SearchApp() {
 
     // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time restore of shared-link state; cannot run during render without a hydration mismatch
     setName(s.name);
-    setObjectType(s.objectType);
+    setScope(s.scope);
     setDepth(s.depth);
     setSort(s.sort);
     setFilters(s.filters);
     void run({
       name: s.name,
-      objectType: s.objectType,
+      scope: s.scope,
       depth: s.depth,
       keepFilters: true,
     });
@@ -128,12 +130,12 @@ export function SearchApp() {
    * fiddling shouldn't fill up the back button.
    */
   useEffect(() => {
-    const query = writeAppState({ name, objectType, depth, sort, filters });
+    const query = writeAppState({ name, scope, depth, sort, filters });
     const next = `${window.location.pathname}${query}`;
     if (next !== `${window.location.pathname}${window.location.search}`) {
       window.history.replaceState(null, "", next);
     }
-  }, [name, objectType, depth, sort, filters]);
+  }, [name, scope, depth, sort, filters]);
 
   const filtered = useMemo(() => {
     if (!data) return [] as ScoredEntity[];
@@ -174,18 +176,18 @@ export function SearchApp() {
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder={
-            objectType === "ET-COMPANY" ? "Company name" : "Business name"
+            scope === "ET-BUSINESS" ? t.namePlaceholderBusiness : t.namePlaceholderCompany
           }
           autoComplete="off"
           spellCheck={false}
-          aria-label="Name you want to register"
+          aria-label={t.nameAriaLabel}
           className="min-w-0 flex-1 bg-transparent text-[15px] text-ink outline-none placeholder:text-faint"
         />
         {name && (
           <button
             type="button"
             onClick={() => setName("")}
-            aria-label="Clear"
+            aria-label={t.clear}
             className="shrink-0 px-1 text-faint hover:text-ink"
           >
             ×
@@ -196,36 +198,38 @@ export function SearchApp() {
           disabled={loading || !name.trim()}
           className="shrink-0 rounded-full bg-accent px-4 py-1.5 text-[13px] font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-40 dark:text-[#04231f]"
         >
-          {loading ? "…" : "Check"}
+          {loading ? t.checking : t.check}
         </button>
       </div>
     </form>
   );
 
-  // The toggle picks which naming rules apply — it does not scope the search.
-  // Both registers are always searched, since a name trading in either one is a
-  // real obstacle.
+  /**
+   * Which register to search. "All" is the default so a conflict in the other
+   * register is never hidden; picking one narrows the results and applies that
+   * register's naming rules (a company needs "Limited", a business name must
+   * not use it).
+   */
   const typeToggle = (
     <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[13px]">
-      <span className="text-faint">Registering a</span>
+      <span className="text-faint">{t.searchLabel}</span>
       {(
         [
-          { v: "ET-COMPANY" as ObjectType, label: "Company" },
-          { v: "ET-BUSINESS" as ObjectType, label: "Business name" },
+          { v: "all" as SearchScope, label: t.scopeAll },
+          { v: "ET-COMPANY" as SearchScope, label: t.scopeCompany },
+          { v: "ET-BUSINESS" as SearchScope, label: t.scopeBusiness },
         ] as const
       ).map((opt) => (
         <button
           key={opt.v}
           type="button"
           onClick={() => {
-            if (opt.v === objectType) return;
-            setObjectType(opt.v);
-            // Re-check straight away so the naming rules update. The register
-            // results are cached under the same key, so this is instant.
-            if (data || error) void run({ objectType: opt.v });
+            if (opt.v === scope) return;
+            setScope(opt.v);
+            if (data || error) void run({ scope: opt.v });
           }}
           className={
-            objectType === opt.v
+            scope === opt.v
               ? "font-medium text-ink underline decoration-accent decoration-2 underline-offset-4"
               : "text-muted hover:text-ink"
           }
@@ -241,12 +245,12 @@ export function SearchApp() {
           setDepth(next);
           if (data || error) void run({ depth: next });
         }}
-        aria-label="Search depth"
+        aria-label={t.depthLabel}
         className="bg-transparent text-muted outline-none hover:text-ink"
       >
-        <option value="quick">Quick</option>
-        <option value="standard">Standard</option>
-        <option value="deep">Deep</option>
+        <option value="quick">{t.depthQuick}</option>
+        <option value="standard">{t.depthStandard}</option>
+        <option value="deep">{t.depthDeep}</option>
       </select>
     </div>
   );
@@ -261,7 +265,7 @@ export function SearchApp() {
           Jina<span className="text-accent">Check</span>
         </h1>
         <p className="mt-2 text-center text-[14px] text-muted">
-          Is the name you want already taken at BRELA?
+          {t.tagline}
         </p>
 
         <div className="mt-7 w-full">{searchField}</div>
@@ -281,11 +285,11 @@ export function SearchApp() {
       {loading && (
         <div className="pt-8">
           <p className="text-[13px] text-muted">
-            Searching the register…{" "}
+            {t.searchingRegister}{" "}
             <span className="tnum text-faint">{elapsed}s</span>
           </p>
           <p className="mt-1 text-[12px] text-faint">
-            BRELA can take 15 to 30 seconds on common words. Filtering afterwards is instant.
+            {t.slowNote}
           </p>
           <ul className="mt-6 space-y-5">
             {[0, 1, 2, 3, 4, 5].map((i) => (
@@ -300,13 +304,13 @@ export function SearchApp() {
 
       {error && !loading && (
         <div className="pt-8">
-          <p className="text-[14px] font-medium text-critical">Search could not complete</p>
+          <p className="text-[14px] font-medium text-critical">{t.searchFailed}</p>
           <p className="mt-1 text-[13px] leading-relaxed text-muted">{error}</p>
           <button
             onClick={() => void run()}
             className="mt-2 text-[13px] text-accent hover:underline"
           >
-            Try again
+            {t.tryAgain}
           </button>
         </div>
       )}
@@ -329,8 +333,8 @@ export function SearchApp() {
           {filtered.length === 0 ? (
             <p className="pt-8 text-[13px] text-muted">
               {data.results.length === 0
-                ? "No entry on the register resembles this name."
-                : "Nothing matches these filters."}
+                ? t.noResemble
+                : t.noFilterMatch}
             </p>
           ) : (
             <ul className="mt-1 divide-y divide-line">
@@ -345,7 +349,7 @@ export function SearchApp() {
               onClick={() => setLimit((l) => l + 50)}
               className="mt-5 text-[13px] text-accent hover:underline"
             >
-              Show more results
+              {t.showMore}
             </button>
           )}
         </div>

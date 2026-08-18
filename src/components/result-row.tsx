@@ -3,7 +3,8 @@
 import { useState } from "react";
 
 import type { ScoredEntity } from "@/lib/types";
-import { CopyButton, Dot, KIND_LABEL, REGISTER_LABEL } from "./ui";
+import { useCopy } from "./lang";
+import { CopyButton, Dot } from "./ui";
 
 function formatDate(value: string | null): string | null {
   if (!value) return null;
@@ -43,16 +44,18 @@ function Highlighted({ name, terms }: { name: string; terms: string[] }) {
  * attention — the risk colour is a single dot.
  */
 export function ResultRow({ entity, terms }: { entity: ScoredEntity; terms: string[] }) {
+  const { t } = useCopy();
   const [open, setOpen] = useState(false);
   const closed = entity.status === "Closed";
 
   const meta = [
     // Name the register explicitly for business names. A user checking a company
     // name needs to see that the clash is a registered trading name, not a company.
-    entity.objectType === "ET-BUSINESS" ? REGISTER_LABEL[entity.objectType] : null,
+    entity.objectType === "ET-BUSINESS" ? t.businessName : null,
     [entity.location.region, entity.location.district].filter(Boolean).join(", ") || null,
     entity.year ? String(entity.year) : null,
-    closed ? "Closed" : null,
+    closed ? t.closedNote : null,
+    entity.hasCharges ? t.chargesNote : null,
   ].filter(Boolean);
 
   return (
@@ -82,31 +85,33 @@ export function ResultRow({ entity, terms }: { entity: ScoredEntity; terms: stri
 
             <p className="mt-0.5 text-[13px] leading-relaxed text-muted">
               <span className="tnum text-faint">{entity.score}</span>{" "}
-              {entity.reasons[0]}
+              {/* Rendered from the match kind rather than the server's English
+                  sentence, so the row reads in the chosen language. */}
+              {t.reasons[entity.kind] ?? entity.reasons[0]}
               {meta.length > 0 && <span className="text-faint"> · {meta.join(" · ")}</span>}
             </p>
           </button>
 
           {open && (
             <dl className="mt-2 grid grid-cols-2 gap-x-6 gap-y-1.5 text-[12px] sm:grid-cols-3">
-              <Detail label="Register" value={REGISTER_LABEL[entity.objectType]} />
-              <Detail label="Match type" value={KIND_LABEL[entity.kind]} />
-              <Detail label="Distinctive core" value={entity.core || "—"} mono />
-              <Detail label="Status" value={entity.status ?? "—"} />
-              <Detail label="Legal form" value={entity.subtype ?? "—"} />
-              <Detail label="Registered" value={formatDate(entity.regDate) ?? "—"} />
-              <Detail label="Certificate no." value={entity.certNumber ?? "—"} mono />
-              <Detail label="Tracking no." value={entity.trackingNo ?? "—"} mono />
+              <Detail label={t.register} value={entity.objectType === "ET-COMPANY" ? t.company : t.businessName} />
+              <Detail label={t.matchType} value={t.kinds[entity.kind]} />
+              <Detail label={t.distinctiveCore} value={entity.core || "—"} mono />
+              <Detail label={t.status} value={entity.status ?? "—"} />
+              <Detail label={t.legalForm} value={entity.subtype ?? "—"} />
+              <Detail label={t.registeredOn} value={formatDate(entity.regDate) ?? "—"} />
+              <Detail label={t.certificateNo} value={entity.certNumber ?? "—"} mono />
+              <Detail label={t.trackingNo} value={entity.trackingNo ?? "—"} mono />
               {entity.cessDate && (
-                <Detail label="Ceased" value={formatDate(entity.cessDate) ?? "—"} />
+                <Detail label={t.ceased} value={formatDate(entity.cessDate) ?? "—"} />
               )}
-              {entity.hasCharges && <Detail label="Charges" value="Registered" />}
+              {entity.hasCharges && <Detail label={t.charges} value={t.chargesRegistered} />}
               <div className="col-span-2 sm:col-span-3">
-                <Detail label="Address" value={entity.address ?? "—"} />
+                <Detail label={t.address} value={entity.address ?? "—"} />
               </div>
               {entity.reasons.length > 1 && (
                 <div className="col-span-2 sm:col-span-3">
-                  <Detail label="All signals" value={entity.reasons.join(" · ")} />
+                  <Detail label={t.allSignals} value={entity.reasons.join(" · ")} />
                 </div>
               )}
             </dl>
@@ -116,7 +121,7 @@ export function ResultRow({ entity, terms }: { entity: ScoredEntity; terms: stri
         {/* Sibling of the row toggle, not a child: a button cannot nest inside
             another button. */}
         <span className="mt-0.5 shrink-0">
-          <CopyButton value={entity.name} label="Copy name" />
+          <CopyButton value={entity.name} label={t.copyName} />
         </span>
       </div>
     </li>

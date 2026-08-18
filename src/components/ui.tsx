@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
-import type { MatchKind, ObjectType, RiskBand } from "@/lib/types";
+import type { ObjectType, RiskBand } from "@/lib/types";
 
 /** How each register is described to the user. */
 export const REGISTER_LABEL: Record<ObjectType, string> = {
@@ -10,23 +10,13 @@ export const REGISTER_LABEL: Record<ObjectType, string> = {
   "ET-BUSINESS": "Business name",
 };
 
-/** Per-band colour + copy, kept in one place so the whole app agrees. */
-export const BAND_META: Record<RiskBand, { label: string; fg: string; dot: string }> = {
-  critical: { label: "Likely refused", fg: "text-critical", dot: "bg-critical" },
-  high: { label: "Expect a query", fg: "text-high", dot: "bg-high" },
-  medium: { label: "Worth tightening", fg: "text-medium", dot: "bg-medium" },
-  low: { label: "Looks available", fg: "text-low", dot: "bg-low" },
-  clear: { label: "Nothing found", fg: "text-clear", dot: "bg-clear" },
-};
-
-export const KIND_LABEL: Record<MatchKind, string> = {
-  identical: "Identical",
-  phonetic: "Sounds alike",
-  "contains-core": "Contains core",
-  "starts-with": "Same opening",
-  "token-overlap": "Shared word",
-  fuzzy: "Similar spelling",
-  weak: "Loose",
+/** Per-band colour. The wording lives in the copy table so it can be translated. */
+export const BAND_META: Record<RiskBand, { fg: string; dot: string }> = {
+  critical: { fg: "text-critical", dot: "bg-critical" },
+  high: { fg: "text-high", dot: "bg-high" },
+  medium: { fg: "text-medium", dot: "bg-medium" },
+  low: { fg: "text-low", dot: "bg-low" },
+  clear: { fg: "text-clear", dot: "bg-clear" },
 };
 
 /**
@@ -72,9 +62,11 @@ async function copyText(text: string): Promise<boolean> {
 export function CopyButton({
   value,
   label = "Copy",
+  doneLabel = "Copied",
 }: {
   value: string;
   label?: string;
+  doneLabel?: string;
 }) {
   const [state, setState] = useState<"idle" | "done" | "failed">("idle");
 
@@ -91,7 +83,7 @@ export function CopyButton({
         e.stopPropagation();
         setState((await copyText(value)) ? "done" : "failed");
       }}
-      title={state === "done" ? "Copied" : state === "failed" ? "Could not copy" : label}
+      title={state === "done" ? doneLabel : label}
       aria-label={label}
       className={`shrink-0 rounded p-1 transition-opacity hover:bg-raised focus-visible:opacity-100 sm:opacity-0 sm:group-hover:opacity-100 ${
         state === "done" ? "text-clear sm:opacity-100" : "text-faint hover:text-ink"
