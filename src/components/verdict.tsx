@@ -113,6 +113,15 @@ export function VerdictLine({ data }: { data: SearchResponse }) {
                 {t.ignoredWords}
               </>
             )}
+            {query.lightweight.length > 0 && (
+              <>
+                .{" "}
+                <span className="font-mono text-muted">
+                  {query.lightweight.slice(0, 8).join(", ")}
+                </span>{" "}
+                {t.lightWords}
+              </>
+            )}
             .{" "}
             {query.scope === "all"
               ? t.bothRegisters
