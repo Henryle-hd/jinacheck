@@ -21,6 +21,11 @@ export const LEGAL_SUFFIXES = new Set([
  * distinctive on their own. Includes the Swahili equivalents that show up a lot.
  */
 export const GENERIC_WORDS = new Set([
+  // digital / professional trades, the gap that let "X SOFTWARE" score as high
+  // as a shared distinctive word
+  "SOFTWARE", "HARDWARE", "APP", "APPS", "WEB", "ONLINE", "CLOUD", "DATA",
+  "NETWORK", "NETWORKS", "COMPUTER", "COMPUTERS", "IT", "ICT", "AI", "STUDIO",
+  "STUDIOS", "LABS", "LAB", "WORKS", "COMPANY", "FIRM", "SHOP",
   // structure / scale
   "GROUP", "HOLDINGS", "HOLDING", "ENTERPRISES", "ENTERPRISE", "VENTURES",
   "VENTURE", "PARTNERS", "ASSOCIATES", "BROTHERS", "BROS", "SONS", "FAMILY",
@@ -59,6 +64,49 @@ export const GENERIC_WORDS = new Set([
   "NATIONAL", "STATE", "PUBLIC", "PRIVATE", "GENUINE", "QUALITY", "BEST",
   "FIRST", "GOLDEN", "GREAT", "BIG", "SMALL", "SMART", "SUCCESS", "SUCCESSFUL",
 ]);
+
+/**
+ * How much a word says about *which* business this is.
+ *
+ * The old model deleted descriptive words outright, which broke two ways at
+ * once: "AGRIBUSINESS SOFTWARE TECHNOLOGIES" lost everything but one word, and
+ * any word missing from the list counted as fully distinctive. Nothing is
+ * deleted now. Words are weighed, so a name built from common trade words has
+ * to match on more of them to score, while sharing one rare word still counts
+ * for a lot.
+ */
+export const DESCRIPTIVE_WEIGHT = 0.15;
+
+export function tokenWeight(token: string): number {
+  if (LEGAL_SUFFIXES.has(token)) return 0;
+  if (GENERIC_WORDS.has(token) || /^\d+$/.test(token)) return DESCRIPTIVE_WEIGHT;
+  // Two-letter fragments carry little on their own.
+  if (token.length <= 2) return 0.4;
+  return 1;
+}
+
+/** Total weight of a token list. */
+export function totalWeight(tokens: string[]): number {
+  return tokens.reduce((sum, t) => sum + tokenWeight(t), 0);
+}
+
+/**
+ * Consecutive runs of a token list, joined.
+ *
+ * This is what lets "EASY ONE" meet "EASYONE": the register writes the same
+ * name both ways, and a reader sees no difference, so the comparison should
+ * not either.
+ */
+export function mergedRuns(tokens: string[], maxSpan = 3): Array<{ text: string; span: number[] }> {
+  const out: Array<{ text: string; span: number[] }> = [];
+  for (let i = 0; i < tokens.length; i++) {
+    for (let n = 2; n <= maxSpan && i + n <= tokens.length; n++) {
+      const span = Array.from({ length: n }, (_, k) => i + k);
+      out.push({ text: span.map((k) => tokens[k]).join(""), span });
+    }
+  }
+  return out;
+}
 
 /** Tokenise a raw register name into uppercase alphanumeric words. */
 export function tokenize(raw: string): string[] {
@@ -118,7 +166,9 @@ export function parseName(raw: string): NameParts {
     }
   }
 
-  const core = (distinctive.length ? distinctive : withoutLegal).join(" ");
+  // Every non-legal word stays. Dropping the descriptive ones is what let a
+  // three-word name collapse into a single common word.
+  const core = withoutLegal.join(" ");
 
   return {
     full: tokens.join(" "),
@@ -142,10 +192,12 @@ export function parseName(raw: string): NameParts {
  * dropped; if that leaves nothing, we fall back to a 3-char prefix of the core.
  */
 export function probeTerms(raw: string, limit = 3): string[] {
-  const { distinctive, withoutLegal } = parseName(raw);
-  const pool = (distinctive.length ? distinctive : withoutLegal)
+  const { withoutLegal } = parseName(raw);
+  // Rarest first: probing NYIKA finds the names that matter, probing SOFTWARE
+  // mostly finds everyone else in the trade.
+  const pool = withoutLegal
     .slice()
-    .sort((a, b) => b.length - a.length);
+    .sort((a, b) => tokenWeight(b) - tokenWeight(a) || b.length - a.length);
 
   const terms: string[] = [];
   for (const t of pool) {
@@ -210,7 +262,28 @@ export function probeSet(raw: string, maxVariants = 2): string[] {
   const base = probeTerms(raw, 3);
   if (!base.length) return base;
 
+  const { withoutLegal } = parseName(raw);
   const terms = [...base];
+
+  if (withoutLegal.length > 1) {
+    // The phrase exactly as typed, first and above the single words.
+    //
+    // The register matches contiguous text, so this is the one query that finds
+    // a verbatim "NYIKA SOFTWARE ..." entry. Probing the words separately only
+    // finds it if it happens to fall inside the depth cap for whichever word
+    // was searched, which for a common word it may not. It is also cheap: a
+    // phrase matches few entries, so it comes back fast.
+    const phrase = withoutLegal.join(" ");
+    if (phrase.length >= 3 && phrase.length <= 60) terms.unshift(phrase);
+
+    // And the same phrase with the spaces closed up, since the register holds
+    // names written both ways.
+    const squashed = withoutLegal.join("");
+    if (squashed.length >= 3 && squashed.length <= 40 && !terms.includes(squashed)) {
+      terms.push(squashed);
+    }
+  }
+
   let added = 0;
   for (const variant of spellingVariants(base[0])) {
     if (added >= maxVariants) break;

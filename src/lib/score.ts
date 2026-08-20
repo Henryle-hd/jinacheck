@@ -4,28 +4,64 @@
  * The test being approximated: the Registrar must refuse a name "identical with
  * or similar to" one already registered under the Business Names (Registration)
  * Act, the Companies Act (Cap. 212) or the Co-operative Societies Act (Cap. 211)
- * where that would be likely to mislead the public (Cap. 213 s. 9(1)(d)). Note
- * it spans registers, which is why both are searched. That is a judgement call
- * about similarity, so we score
- * it as one — on the distinctive core, not the decorated full name — and show
- * the reasoning rather than just a number.
+ * where that would be likely to mislead the public (Cap. 213 s. 9(1)(d)).
+ *
+ * How it is measured, and why:
+ *
+ *   Every word is weighed rather than kept or deleted. Sharing a rare word like
+ *   NYIKA says the two names would be confused; sharing SOFTWARE says only that
+ *   both are in the same trade. The old binary split got this wrong in both
+ *   directions, scoring "J Software" as a near-clone of "AGRIBUSINESS SOFTWARE
+ *   TECHNOLOGIES" while ranking real NYIKA collisions below it.
+ *
+ *   Coverage is measured both ways. A candidate blocks you when it accounts for
+ *   most of your name AND your name accounts for most of it. One direction alone
+ *   lets a long name swallow a short one and call it a match.
+ *
+ *   Words are matched across spaces. "EASY ONE" and "EASYONE" are the same name
+ *   to a reader and to an examiner, so consecutive words are also compared
+ *   joined together.
  */
 
-import { parseName, type NameParts } from "./name";
 import {
-  editRatio,
-  jaroWinkler,
-  phoneticPhrase,
-  tokenContainment,
-  tokenSetRatio,
-} from "./similarity";
+  mergedRuns,
+  parseName,
+  tokenWeight,
+  totalWeight,
+  type NameParts,
+} from "./name";
+import { editRatio, phoneticKey, phoneticPhrase } from "./similarity";
 import type { Entity, MatchKind, RiskBand, ScoredEntity, Verdict } from "./types";
 
 export interface Proposal {
   raw: string;
   parts: NameParts;
   phonetic: string;
-  coreSet: Set<string>;
+  /** All non-legal words run together, for spacing-blind comparison. */
+  squashed: string;
+  units: Unit[];
+  weight: number;
+}
+
+/** A word, or a run of consecutive words treated as one. */
+interface Unit {
+  text: string;
+  idx: number[];
+  weight: number;
+}
+
+function buildUnits(tokens: string[]): Unit[] {
+  const singles: Unit[] = tokens.map((t, i) => ({
+    text: t,
+    idx: [i],
+    weight: tokenWeight(t),
+  }));
+  const merged: Unit[] = mergedRuns(tokens).map((m) => ({
+    text: m.text,
+    idx: m.span,
+    weight: m.span.reduce((sum, k) => sum + tokenWeight(tokens[k]), 0),
+  }));
+  return [...singles, ...merged];
 }
 
 export function buildProposal(raw: string): Proposal {
@@ -34,7 +70,9 @@ export function buildProposal(raw: string): Proposal {
     raw,
     parts,
     phonetic: phoneticPhrase(parts.core),
-    coreSet: new Set(parts.distinctive.length ? parts.distinctive : parts.withoutLegal),
+    squashed: parts.withoutLegal.join(""),
+    units: buildUnits(parts.withoutLegal),
+    weight: totalWeight(parts.withoutLegal),
   };
 }
 
@@ -46,113 +84,143 @@ export function bandFor(score: number): RiskBand {
   return "clear";
 }
 
-/** Whole-word containment: does `hay` contain `needle` as a word boundary run? */
-function containsPhrase(hay: string, needle: string): boolean {
-  if (!needle) return false;
-  return new RegExp(`(^|\\s)${needle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(\\s|$)`).test(hay);
+/** How alike two words are, spelling and sound together. 0 means unrelated. */
+function unitMatch(a: string, b: string): { score: number; phonetic: boolean } {
+  if (a === b) return { score: 1, phonetic: false };
+
+  const ed = editRatio(a, b);
+  const sameSound = a.length > 2 && b.length > 2 && phoneticKey(a) === phoneticKey(b);
+
+  if (sameSound && ed >= 0.7) return { score: 0.92, phonetic: true };
+  if (ed >= 0.88) return { score: 0.85, phonetic: false };
+  if (ed >= 0.78) return { score: 0.62, phonetic: false };
+  if (sameSound) return { score: 0.55, phonetic: true };
+  return { score: 0, phonetic: false };
+}
+
+interface Alignment {
+  covP: number;
+  covC: number;
+  shared: string[];
+  usedPhonetic: boolean;
 }
 
 /**
- * Score one register entry against the proposal.
- * Returns the 0-100 score, the dominant match kind, and the reasons behind it.
+ * Pair up the two names' words, best matches first.
+ *
+ * Greedy rather than optimal: each word can only be spent once, and the
+ * strongest pairing wins it. An exact assignment would cost more to compute and
+ * would not change the ordering of anything a person is going to read.
  */
+function align(p: Proposal, cTokens: string[], cUnits: Unit[], cWeight: number): Alignment {
+  const pairs: Array<{ p: Unit; c: Unit; m: number; gain: number; phonetic: boolean }> = [];
+
+  for (const pu of p.units) {
+    if (pu.weight <= 0) continue;
+    for (const cu of cUnits) {
+      if (cu.weight <= 0) continue;
+      const { score, phonetic } = unitMatch(pu.text, cu.text);
+      if (score > 0) {
+        pairs.push({ p: pu, c: cu, m: score, gain: score * Math.min(pu.weight, cu.weight), phonetic });
+      }
+    }
+  }
+  // Exact word matches claim their words before anything approximate does.
+  // Sorting on weight alone let a phonetic match against a longer run outrank
+  // the exact match sitting inside it, which scored the same but described
+  // itself wrongly.
+  pairs.sort((a, b) => b.m - a.m || b.gain - a.gain);
+
+  const usedP = new Set<number>();
+  const usedC = new Set<number>();
+  const shared: string[] = [];
+  let matchedP = 0;
+  let matchedC = 0;
+  let usedPhonetic = false;
+  let first = true;
+
+  for (const pair of pairs) {
+    if (pair.p.idx.some((i) => usedP.has(i))) continue;
+    if (pair.c.idx.some((i) => usedC.has(i))) continue;
+    pair.p.idx.forEach((i) => usedP.add(i));
+    pair.c.idx.forEach((i) => usedC.add(i));
+    matchedP += pair.m * pair.p.weight;
+    matchedC += pair.m * pair.c.weight;
+    // Only the pairing that carries the match decides the label. A minor word
+    // happening to rhyme should not make an exact match read as "sounds alike".
+    if (first) {
+      usedPhonetic = pair.phonetic;
+      first = false;
+    }
+    if (pair.p.weight >= 0.5) shared.push(pair.c.text);
+  }
+
+  return {
+    covP: p.weight > 0 ? matchedP / p.weight : 0,
+    covC: cWeight > 0 ? matchedC / cWeight : 0,
+    shared,
+    usedPhonetic,
+  };
+}
+
+/** Both directions have to hold, so the mean punishes a lopsided match. */
+function harmonic(a: number, b: number): number {
+  if (a <= 0 || b <= 0) return 0;
+  return (2 * a * b) / (a + b);
+}
+
 export function scoreEntity(entity: Entity, p: Proposal): ScoredEntity {
   const cand = parseName(entity.name);
+  const cTokens = cand.withoutLegal;
+  const cWeight = totalWeight(cTokens);
+  const cSquashed = cTokens.join("");
+
   const reasons: string[] = [];
-  let score = 0;
   let kind: MatchKind = "weak";
+  let score: number;
 
-  const pCore = p.parts.core;
-  const cCore = cand.core;
-  const pTokens = p.parts.distinctive.length ? p.parts.distinctive : p.parts.withoutLegal;
-  const cTokens = cand.distinctive.length ? cand.distinctive : cand.withoutLegal;
+  const { covP, covC, shared, usedPhonetic } = align(p, cTokens, buildUnits(cTokens), cWeight);
+  const base = harmonic(covP, covC);
 
-  const sameFull = p.parts.withoutLegal.join(" ") === cand.withoutLegal.join(" ");
-  const sameCore = pCore.length > 0 && pCore === cCore;
-  const candPhonetic = phoneticPhrase(cCore);
-
-  const jw = pCore && cCore ? jaroWinkler(pCore, cCore) : 0;
-  const ed = pCore && cCore ? editRatio(pCore, cCore) : 0;
-
-  // The phonetic key intentionally discards vowels, which makes it a strong net
-  // but a loose one: NYIKA and NIKAYA reduce to the same key without really
-  // sounding alike. Requiring the spellings to be close too keeps the
-  // "sounds the same" claim honest — looser pairs still get caught below as
-  // similar spellings, just without the stronger label.
-  const samePhonetic =
-    p.phonetic.length > 1 && p.phonetic === candPhonetic && ed >= 0.7;
-  const tset = tokenSetRatio(pTokens, cTokens);
-  const contain = tokenContainment(pTokens, cTokens);
-
-  if (sameFull) {
+  if (p.squashed && p.squashed === cSquashed) {
     score = 100;
     kind = "identical";
-    reasons.push("Identical name already on the register");
-  } else if (sameCore) {
-    score = 96;
+    reasons.push("Identical name once legal wording is set aside");
+  } else if (base >= 0.965) {
+    score = 97;
     kind = "identical";
-    reasons.push("Same distinctive core, with only legal or descriptive words differing");
-  } else if (samePhonetic) {
-    score = 90;
-    kind = "phonetic";
-    reasons.push("Sounds the same when spoken (idem sonans)");
-  } else if (containsPhrase(cCore, pCore) || containsPhrase(pCore, cCore)) {
-    // Scale by how much unrelated material surrounds the shared core: "NIKA
-    // MOTORS" swallowing "NIKA" is a far closer call than a five-word name that
-    // happens to include it.
-    const ratio = Math.min(pCore.length, cCore.length) / Math.max(pCore.length, cCore.length);
-    score = Math.round(70 + 26 * ratio);
-    kind = "contains-core";
-    reasons.push(
-      cCore.length > pCore.length
-        ? "Existing name contains your whole distinctive core"
-        : "Your name contains this entry’s whole distinctive core",
-    );
-  } else if (cCore.startsWith(pCore) || pCore.startsWith(cCore)) {
-    // Same idea for prefixes: NIKA→NIKAR is near-identical, NIKA→NIKALINE much
-    // less so, and a flat score would rank them together.
-    const ratio = Math.min(pCore.length, cCore.length) / Math.max(pCore.length, cCore.length);
-    score = Math.round(60 + 32 * ratio);
-    kind = "starts-with";
-    reasons.push(
-      ratio >= 0.75
-        ? "Nearly the same word, a character or two apart"
-        : "Shares an opening element, the part customers recognise first",
-    );
-  } else if (contain >= 0.6 || tset >= 0.6) {
-    score = 58 + Math.round(Math.max(contain, tset) * 25);
-    kind = "token-overlap";
-    reasons.push("Shares its distinctive word(s) with your name");
+    reasons.push("Same name in substance, differing only in wording");
   } else {
-    // Fall back to graded fuzzy similarity on the core.
-    const blended = jw * 0.65 + ed * 0.35;
-    score = Math.round(blended * 82);
-    kind = blended >= 0.7 ? "fuzzy" : "weak";
-    if (blended >= 0.82) reasons.push("Very close spelling, likely to be read as the same name");
-    else if (blended >= 0.7) reasons.push("Similar spelling");
-    else if (blended >= 0.55) reasons.push("Loosely similar");
-    else reasons.push("Contains your search term");
-  }
+    score = Math.round(base * 96);
 
-  // A substring hit that shares no word and no real similarity is noise: the
-  // upstream search matches "nika" inside "KUZIGANIKA". Keep it findable but
-  // stop it competing with genuine conflicts.
-  if (kind === "weak" && jw < 0.62) {
-    score = Math.min(score, 30);
-  }
-
-  // Phonetic agreement is corroborating evidence even when it is not the
-  // dominant signal — it is what turns "similar spelling" into a real risk.
-  if (!samePhonetic && kind !== "identical" && candPhonetic && p.phonetic) {
-    const pk = jaroWinkler(p.phonetic, candPhonetic);
-    if (pk >= 0.9) {
-      score = Math.min(100, score + 6);
-      reasons.push("Near-identical pronunciation");
+    if (usedPhonetic && base >= 0.6) {
+      kind = "phonetic";
+      reasons.push("Sounds the same when spoken (idem sonans)");
+    } else if (covP >= 0.9 && covC < 0.85) {
+      kind = "contains-core";
+      reasons.push("Existing name contains all of yours, plus more");
+    } else if (covC >= 0.9 && covP < 0.85) {
+      kind = "contains-core";
+      reasons.push("Your name contains all of this one");
+    } else if (base >= 0.55) {
+      kind = "token-overlap";
+      reasons.push(
+        shared.length
+          ? `Shares ${shared.slice(0, 3).join(", ")} with your name`
+          : "Shares its distinctive wording with your name",
+      );
+    } else if (base >= 0.3) {
+      kind = "fuzzy";
+      reasons.push("Some wording in common, mostly common trade words");
+    } else {
+      kind = "weak";
+      reasons.push("Contains your search term");
+      score = Math.min(score, 30);
     }
   }
 
-  // Closed entries still sit on the register and still get cited by examiners,
-  // but they are a materially weaker obstacle than a live registration.
+  // Closed entries still sit on the register and still get cited, but they are
+  // a materially weaker obstacle than a live registration.
   if (entity.status === "Closed") {
     score = Math.round(score * 0.78);
     reasons.push("Entry is closed, which is a weaker obstacle but still on the register");
@@ -168,7 +236,7 @@ export function scoreEntity(entity: Entity, p: Proposal): ScoredEntity {
     band: bandFor(score),
     kind,
     reasons,
-    core: cCore,
+    core: cand.core,
   };
 }
 
@@ -218,7 +286,7 @@ export function buildVerdict(results: ScoredEntity[], proposal: Proposal, hasBlo
 
   if (hasBlocker && band !== "critical") {
     band = band === "clear" || band === "low" ? "medium" : band;
-    summary += " Note the naming-rule issues flagged above. They apply whatever the similarity score says.";
+    summary += " Note the naming-rule issues flagged above.";
   }
 
   return { band, headline, summary, topScore, identicalCount, highRiskCount };

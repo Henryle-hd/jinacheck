@@ -150,8 +150,10 @@ export interface SearchResponse {
     tokens: string[];
     /** Homophone spellings we probed in addition to the literal tokens. */
     variants: string[];
-    /** Words ignored as legal-form or purely descriptive. */
+    /** Legal-form words, the only ones genuinely dropped. */
     ignored: string[];
+    /** Common trade words: searched and scored, but weighed lower. */
+    lightweight: string[];
   };
   verdict: Verdict;
   flags: NameFlag[];

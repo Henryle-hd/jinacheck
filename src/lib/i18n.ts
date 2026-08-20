@@ -54,6 +54,7 @@ export interface Copy {
   searchedCore: string;
   plusHomophones: string;
   ignoredWords: string;
+  lightWords: string;
   bothRegisters: string;
   onlyCompanyRegister: string;
   onlyBusinessRegister: string;
@@ -171,7 +172,8 @@ const en: Copy = {
   hideDetail: "Hide detail",
   searchedCore: "Searched the distinctive core",
   plusHomophones: "plus homophone spellings",
-  ignoredWords: "as legal-form or descriptive wording",
+  ignoredWords: "as legal wording",
+  lightWords: "searched too, but weighed lower as common trade words",
   bothRegisters: "Both the company and business-name registers were searched.",
   onlyCompanyRegister:
     "Only the company register was searched. Switch to All to include business names, which can conflict too.",
@@ -243,13 +245,13 @@ const en: Copy = {
     weak: "Loose",
   },
   reasons: {
-    identical: "Same distinctive core, with only legal or descriptive words differing",
+    identical: "The same name once legal and descriptive wording is set aside",
     phonetic: "Sounds the same when spoken (idem sonans)",
-    "contains-core": "Contains your whole distinctive core",
+    "contains-core": "Covers your whole name, with more besides",
     "starts-with": "Shares an opening element, the part customers recognise first",
-    "token-overlap": "Shares its distinctive word with your name",
-    fuzzy: "Very close spelling, likely to be read as the same name",
-    weak: "Contains your search term",
+    "token-overlap": "Shares the distinctive part of your name",
+    fuzzy: "Some wording in common, mostly common trade words",
+    weak: "Only contains your search term",
   },
   closedNote: "entry is closed, a weaker obstacle but still on the register",
   chargesNote: "has registered charges",
@@ -322,7 +324,8 @@ const sw: Copy = {
   hideDetail: "Ficha maelezo",
   searchedCore: "Imetafuta kiini cha jina",
   plusHomophones: "pamoja na tahajia zinazosikika sawa",
-  ignoredWords: "kama maneno ya kisheria au ya maelezo",
+  ignoredWords: "kama maneno ya kisheria",
+  lightWords: "yametafutwa pia, lakini yamepewa uzito mdogo kama maneno ya kawaida ya biashara",
   bothRegisters: "Daftari zote mbili, la makampuni na la majina ya biashara, zimetafutwa.",
   onlyCompanyRegister:
     "Ni daftari la makampuni pekee lililotafutwa. Chagua Zote ili kujumuisha majina ya biashara, ambayo pia yanaweza kugongana.",
@@ -394,13 +397,13 @@ const sw: Copy = {
     weak: "Ulinganifu hafifu",
   },
   reasons: {
-    identical: "Kiini cha jina ni kile kile, yanatofautiana kwa maneno ya kisheria au ya maelezo tu",
+    identical: "Ni jina lile lile ukiondoa maneno ya kisheria na ya maelezo",
     phonetic: "Linasikika sawa likitamkwa (idem sonans)",
-    "contains-core": "Lina kiini chako chote cha jina",
+    "contains-core": "Lina jina lako lote, na zaidi",
     "starts-with": "Linaanza kwa namna moja, sehemu ambayo wateja huikumbuka kwanza",
-    "token-overlap": "Linashiriki neno la kipekee na jina lako",
-    fuzzy: "Tahajia inakaribiana sana, linaweza kusomeka kama jina lile lile",
-    weak: "Lina neno ulilotafuta",
+    "token-overlap": "Linashiriki sehemu ya kipekee ya jina lako",
+    fuzzy: "Yana maneno yanayofanana, mengi ni ya kawaida ya biashara",
+    weak: "Lina tu neno ulilotafuta",
   },
   closedNote: "usajili umefungwa, kizuizi hafifu lakini bado lipo katika daftari",
   chargesNote: "lina dhamana zilizosajiliwa",
