@@ -8,9 +8,9 @@ const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 const description =
-  "Check whether a company or business name is already taken at BRELA before you file. " +
-  "Searches both Tanzanian registers at once, catches names that only sound alike, and " +
-  "filters by region, status and year.";
+  "Check whether a business or company name is available on the BRELA register and see " +
+  "how likely yours is to be accepted. Every close match is scored, so you know what " +
+  "stands in the way before you file.";
 
 /**
  * Metadata for search engines and link previews.
@@ -23,7 +23,7 @@ const description =
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl()),
   title: {
-    default: `${SITE_NAME} | Check a business name against the BRELA register`,
+    default: `${SITE_NAME} | Is your business or company name already taken at BRELA?`,
     template: `%s · ${SITE_NAME}`,
   },
   description,
@@ -44,7 +44,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     siteName: SITE_NAME,
-    title: `${SITE_NAME} | Is your business name already taken?`,
+    title: `${SITE_NAME} | Is your business or company name already taken at BRELA?`,
     description,
     url: "/",
     locale: "en_TZ",
@@ -52,7 +52,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: `${SITE_NAME} | Is your business name already taken?`,
+    title: `${SITE_NAME} | Is your business or company name already taken at BRELA?`,
     description,
   },
   category: "business",
