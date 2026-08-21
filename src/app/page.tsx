@@ -63,8 +63,8 @@ export async function generateMetadata({ searchParams }: PageProps<"/">): Promis
     : `${name} | Is this name already taken at BRELA?`;
 
   const description = count
-    ? `${count} names on the BRELA register resemble ${name}. Each is scored to show the availability of the name and what challenges it.`
-    : `Check whether ${name} is available as a business or company name at BRELA. Names from the register are scored against yours to show what stands in the way.`;
+    ? `${count} names at BRELA resemble ${name}. Each is scored to show the availability of the name and what challenges it.`
+    : `Check whether ${name} is available as a business or company name at BRELA. Existing names are scored against yours to show what stands in the way.`;
 
   const card = new URLSearchParams({ name });
   if (count) card.set("count", String(count));
