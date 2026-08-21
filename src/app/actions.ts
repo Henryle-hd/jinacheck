@@ -3,7 +3,7 @@
 import { headers } from "next/headers";
 
 import { cacheGet } from "@/lib/cache";
-import { isSameOrigin, verifyToken } from "@/lib/guard";
+import { isSameOrigin, mintToken, verifyToken } from "@/lib/guard";
 import { persistSearch } from "@/lib/persist";
 import { checkRate } from "@/lib/rate-limit";
 import { readRequestMeta } from "@/lib/request-meta";
@@ -34,17 +34,22 @@ export interface ActionInput {
 
 export type ActionResult =
   | { ok: true; response: SearchResponse }
-  | { ok: false; error: string; retryAfterSec?: number };
+  /**
+   * `code` lets the caller tell a stale token apart from a real failure. A
+   * stale token is not the user's problem to solve, so the client swaps it and
+   * retries rather than showing an error.
+   */
+  | { ok: false; error: string; code?: "token" | "origin" | "rate"; retryAfterSec?: number };
 
 export async function searchAction(input: ActionInput): Promise<ActionResult> {
   const h = await headers();
 
   if (!isSameOrigin(h)) {
-    return { ok: false, error: "This search can only be run from the site itself." };
+    return { ok: false, code: "origin", error: "This search can only be run from the site itself." };
   }
 
   if (!verifyToken(input.token)) {
-    return { ok: false, error: "This page has been open a while. Reload it and try again." };
+    return { ok: false, code: "token", error: "Session expired." };
   }
 
   const name = input.name.trim();
@@ -69,6 +74,7 @@ export async function searchAction(input: ActionInput): Promise<ActionResult> {
     if (!rate.allowed) {
       return {
         ok: false,
+        code: "rate",
         error: "That is a lot of searches at once. Give it a minute and try again.",
         retryAfterSec: rate.retryAfterSec,
       };
@@ -81,4 +87,16 @@ export async function searchAction(input: ActionInput): Promise<ActionResult> {
   persistSearch(h, outcome.response, "user");
 
   return { ok: true, response: outcome.response };
+}
+
+/**
+ * Hand the page a fresh token.
+ *
+ * Same-origin only, and it mints nothing else, so the worst it can do for an
+ * outsider is issue a token they still cannot use from another site.
+ */
+export async function refreshToken(): Promise<string | null> {
+  const h = await headers();
+  if (!isSameOrigin(h)) return null;
+  return mintToken();
 }

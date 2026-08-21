@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { searchAction } from "@/app/actions";
+import { refreshToken, searchAction } from "@/app/actions";
 import type { ScoredEntity, SearchResponse, SearchScope } from "@/lib/types";
 import {
   DEFAULT_STATE,
@@ -18,6 +18,9 @@ import { VerdictLine } from "./verdict";
 
 export function SearchApp({ token }: { token: string }) {
   const { t } = useCopy();
+  // Held in state, not read straight from the prop, so a stale one can be
+  // swapped without reloading the page.
+  const tokenRef = useRef(token);
   const [name, setName] = useState(DEFAULT_STATE.name);
   const [scope, setScope] = useState<SearchScope>(DEFAULT_STATE.scope);
   const [depth, setDepth] = useState<Depth>(DEFAULT_STATE.depth);
@@ -69,7 +72,21 @@ export function SearchApp({ token }: { token: string }) {
       setLimit(25);
 
       try {
-        const result = await searchAction({ ...payload, token });
+        let result = await searchAction({ ...payload, token: tokenRef.current });
+
+        /**
+         * A token expires after a few hours, so a tab left open overnight would
+         * otherwise greet you with "reload and try again". The page can fetch a
+         * new one itself, so it does that and runs the search you asked for.
+         */
+        if (!result.ok && result.code === "token") {
+          const fresh = await refreshToken();
+          if (fresh) {
+            tokenRef.current = fresh;
+            result = await searchAction({ ...payload, token: fresh });
+          }
+        }
+
         if (result.ok) {
           setData(result.response);
         } else {
@@ -83,7 +100,7 @@ export function SearchApp({ token }: { token: string }) {
         setLoading(false);
       }
     },
-    [name, scope, depth, t, token],
+    [name, scope, depth, t],
   );
 
   /**
