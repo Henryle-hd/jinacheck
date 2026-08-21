@@ -8,8 +8,8 @@ const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 const description =
-  "Check whether a business or company name is available on the BRELA register and see " +
-  "how likely yours is to be accepted. Every close match is scored, so you know what " +
+  "Check whether your business or company name is available at BRELA and see how " +
+  "likely it is to be accepted. Every close match is scored, so you know what " +
   "stands in the way before you file.";
 
 /**
